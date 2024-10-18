@@ -8,7 +8,7 @@
 #include "./fun/customer.h"
 #include "./fun/employee.h"
 
-#define PORT 8081
+#define PORT 8080
 #define BUFFER_SIZE 1024
 
 // Function prototypes
@@ -89,8 +89,9 @@ void *handleClient(void *socket_desc) {
     int choice;
 
     // Read the user's choice from the client
+    bzero(buffer,sizeof(buffer));
     read(client_sock, buffer, BUFFER_SIZE);
-    //printf("Received role choice: %s\n", buffer); // Debugging line
+    printf("Received role choice: %s\n", buffer); // Debugging line
     choice = atoi(buffer);  // Convert the string choice to an integer
 
     // Handle the user's role based on the choice using switch-case
@@ -103,8 +104,9 @@ void *handleClient(void *socket_desc) {
         case 2:
             //char message[] = "Bank Employee Menu: \n1. Add New Customer\n2. Modify Customer Details\n3. Process Loan Applications\n4. View Customer Transactions\n Enter the choice\n";
             //write(client_sock, message, strlen(message));
+            printf("Hello \n");
             empl_handler(client_sock);
-            //printf("Hello");
+            
             break;
         case 3:
             //char message[] = "Manager Menu: \n1. Activate/Deactivate Customer Accounts\n2. Assign Loan Applications\n3. Review Customer Feedback\n Enter the choice\n";

@@ -33,37 +33,38 @@ int get_next_customer_id();
 //=================================================================================================================
 bool empl_handler(int connFD) {
     char buffer[1024];
+    
     char loginID[50], password[50];
 
     // Employee Login Process
-    send(connFD, "Enter Login ID: \n", strlen("Enter Login ID: \n"), 0);
-    ssize_t recvBytes = recv(connFD, loginID, sizeof(loginID) - 1, 0); // Receive login ID
-    if (recvBytes <= 0) {
+    write(connFD, "&Enter Login ID: \n", strlen("&Enter Login ID: \n"));
+    ssize_t readBytes = read(connFD, loginID, sizeof(loginID) - 1); // Receive login ID
+    if (readBytes <= 0) {
         printf("Error receiving login ID.\n");
         return false;
     }
-    loginID[recvBytes] = '\0';  // Null-terminate the login ID
+    loginID[readBytes] = '\0';  // Null-terminate the login ID
     loginID[strcspn(loginID, "\n")] = 0; // Remove newline character if any
     printf("Received Login ID: %s\n", loginID);  // Debugging line
 
-    send(connFD, "Enter Password: \n", strlen("Enter Password: \n"), 0);
-    recvBytes = recv(connFD, password, sizeof(password) - 1, 0);  // Receive password
-    if (recvBytes <= 0) {
+    write(connFD, "&Enter Password: \n", strlen("&Enter Password: \n"));
+    readBytes = read(connFD, password, sizeof(password) - 1);  // Receive password
+    if (readBytes <= 0) {
         printf("Error receiving password.\n");
         return false;
     }
-    password[recvBytes] = '\0';  // Null-terminate the password
+    password[readBytes] = '\0';  // Null-terminate the password
     password[strcspn(password, "\n")] = 0; // Remove newline character if any
     printf("Received Password: %s\n", password);  // Debugging line
 
-    // Check login credentials
-    if (strcmp(loginID, EMPLOYEE_LOGIN_ID) != 0 || strcmp(password, EMPLOYEE_PASSWORD) != 0) {
-        send(connFD, "INFO:Invalid Login ID or Password\n", strlen("INFO:Invalid Login ID or Password\n"), 0);
-        printf("LOGIN message sent");
-        return false;
-    }
+    // // Check login credentials
+    // if (strcmp(loginID, EMPLOYEE_LOGIN_ID) != 0 || strcmp(password, EMPLOYEE_PASSWORD) != 0) {
+    //     write(connFD, "INFO:Invalid Login ID or Password\n", strlen("INFO:Invalid Login ID or Password\n"), 0);
+    //     printf("LOGIN message sent");
+    //     return false;
+    // }
 
-    send(connFD, "INFO:Login Successful!##\n", strlen("INFO:Login Successful!##\n"), 0);
+    write(connFD, "*Login Successful!\n", strlen("*Login Successful!\n"));
     
     bool logged_in = true;
     while (logged_in) {
@@ -73,7 +74,7 @@ bool empl_handler(int connFD) {
 
         // Menu Options
         const char *menu =
-            "\n=== Employee Menu ===\n"
+            "#\n=== Employee Menu ===\n"
             "1. Add New Customer\n"
             "2. Modify Customer Details\n"
             "3. Approve/Reject Loans\n"
@@ -81,55 +82,55 @@ bool empl_handler(int connFD) {
             "5. Change Password\n"
             "6. Logout\n"
             "7. Exit\n"
-            "Enter your choice: ##\n";
+            "Enter your choice:\n";
         
-        send(connFD, menu, strlen(menu), 0);
+        write(connFD, menu, strlen(menu));
         printf("SENT MEnu \n");
-        recvBytes = recv(connFD, buffer, sizeof(buffer) - 1, 0);  // Receive user's choice
+        readBytes = read(connFD, buffer, sizeof(buffer) - 1);  // Receive user's choice
         printf("Received");
-        if (recvBytes <= 0) {
+        if (readBytes <= 0) {
             printf("Error receiving choice.\n");
             break;
         }
-        buffer[recvBytes] = '\0';  // Null-terminate the input
+        buffer[readBytes] = '\0';  // Null-terminate the input
         int choice = atoi(buffer);
 
         switch (choice) {
             case 1:
-                send(connFD, "INFO:Add New Customer selected.##\n", strlen("INFO:Add New Customer selected.##\n"), 0);
+                write(connFD, "*Add New Customer selected.##\n", strlen("*Add New Customer selected.##\n"));
                 printf("MEssage sent \n");
                 add_new_customer(connFD);
                 break;
             case 2:
-                send(connFD, "INFO:Modify Customer Details selected.\n", strlen("INFO:Modify Customer Details selected.\n"), 0);
+                write(connFD, "*Modify Customer Details selected.\n", strlen("*Modify Customer Details selected.\n"));
                 printf("MEssage sent \n");
                 //modify_customer_details(connFD);
                 break;
             case 3:
-                send(connFD, "INFO:Approve/Reject Loans selected.\n", strlen("INFO:Approve/Reject Loans selected.\n"), 0);
+                write(connFD, "*Approve/Reject Loans selected.\n", strlen("*Approve/Reject Loans selected.\n"));
                 //approve_reject_loan(connFD);
                 printf("MEssage sent \n");
                 break;
             case 4:
-                send(connFD, "INFO:View Assigned Loan Applications selected.\n", strlen("INFO:View Assigned Loan Applications selected.\n"), 0);
+                write(connFD, "*View Assigned Loan Applications selected.\n", strlen("*View Assigned Loan Applications selected.\n"));
                 //view_assigned_loan_applications(connFD);
                 break;
             case 5:
-                send(connFD, "INFO:Change Password selected.\n", strlen("INFO:Change Password selected.\n"), 0);
+                write(connFD, "*Change Password selected.\n", strlen("*Change Password selected.\n"));
                 // Implement change password logic here
                 printf("MEssage sent \n");
                 break;
             case 6:
-                send(connFD, "INFO:Logging out...\n", strlen("INFO:Logging out...\n"), 0);
+                write(connFD, "*Logging out...\n", strlen("*Logging out...\n"));
                 logged_in = false;
                 printf("MEssage sent");
                 break;
             case 7:
-                send(connFD, "Exiting...\n", strlen("Exiting...\n"), 0);
+                write(connFD, "Exiting...\n", strlen("Exiting...\n"));
                 logged_in = false;
                 break;
             default:
-                send(connFD, "INFO:Invalid choice. Please try again.\n", strlen("INFO:Invalid choice. Please try again.\n"), 0);
+                write(connFD, "*Invalid choice. Please try again.\n", strlen("*Invalid choice. Please try again.\n"));
                 printf("MEssage sent invalid \n");
                 break;
         }
@@ -142,32 +143,37 @@ bool empl_handler(int connFD) {
 bool add_new_customer(int connFD) {
     struct Customer newCustomer;
     char buffer[1000];
+    char wri[1024];
     ssize_t writeBytes;
 
     // Get the next available customer ID
     newCustomer.id = get_next_customer_id();
 
     // Prompt for customer details
-    send(connFD, "Enter Customer Name: ##\n", strlen("Enter Customer Name: ##\n"), 0);
+    write(connFD, "&Enter Customer Name: \n", strlen("&Enter Customer Name: \n"));
     printf("Sent \n");
+    bzero(buffer,sizeof(buffer));
     read(connFD, newCustomer.name, sizeof(newCustomer.name));
     printf("RE \n");
     newCustomer.name[strcspn(newCustomer.name, "\n")] = 0; // Remove newline
 
-    send(connFD, "Enter Customer Gender (M/F/O): \n", strlen("Enter Customer Gender (M/F/O): \n"), 0);
+    write(connFD, "&Enter Customer Gender (M/F/O): \n", strlen("&Enter Customer Gender (M/F/O): \n"));
     printf("Sent \n");
-    recv(connFD, &newCustomer.gender, sizeof(newCustomer.gender), 0);
+    bzero(buffer,sizeof(buffer));
+    read(connFD, &newCustomer.gender, sizeof(newCustomer.gender));
     printf("RE \n");
 
-    send(connFD, "Enter Customer Age: \n", strlen("Enter Customer Age: \n"), 0);
+    write(connFD, "&Enter Customer Age: \n", strlen("&Enter Customer Age: \n"));
     printf("Sent \n");
-    recv(connFD, buffer, sizeof(buffer), 0);
+    bzero(buffer,sizeof(buffer));
+    read(connFD, buffer, sizeof(buffer));
     printf("RE \n");
     newCustomer.age = atoi(buffer);
 
-    send(connFD, "Enter Customer Account Number: \n", strlen("Enter Customer Account Number: \n"), 0);
+    write(connFD, "&Enter Customer Account Number: \n", strlen("&Enter Customer Account Number: \n"));
     printf("Sent \n");
-    recv(connFD, buffer, sizeof(buffer), 0);
+    bzero(buffer,sizeof(buffer));
+    read(connFD, buffer, sizeof(buffer));
     printf("RE \n");
     newCustomer.account = atoi(buffer);
 
@@ -190,14 +196,16 @@ bool add_new_customer(int connFD) {
 
     close(customerFileFD);
 
-    // Notify the client of success and return customer ID, account number, and password
-    send(connFD, ADD_NEW_CUSTOMER_SUCCESS, strlen(ADD_NEW_CUSTOMER_SUCCESS), 0);
+    
+    strcpy(wri,"*");// Notify the client of success and return customer ID, account number, and password
+    strcpy(wri,ADD_NEW_CUSTOMER_SUCCESS);
+    write(connFD,wri , strlen(wri));
     printf("Sent SUCCESS \n");
 
     // Prepare response with customer ID, account number, and password
-    snprintf(buffer, sizeof(buffer), "INFO:Customer ID: %d\nAccount Number: %d\nPassword: %s\n", 
+    snprintf(buffer, sizeof(buffer), "*Customer ID: %d\nAccount Number: %d\nPassword: %s\n", 
              newCustomer.id, newCustomer.account, newCustomer.password);
-    send(connFD, buffer, strlen(buffer), 0);
+    write(connFD, buffer, strlen(buffer));
 
     return true;
 }
@@ -208,8 +216,8 @@ bool modify_customer_details(int connFD) {
     struct Customer updatedCustomer;
     char buffer[1000];
 
-    send(connFD, "Enter Customer ID to modify: ", strlen("Enter Customer ID to modify: "), 0);
-    recv(connFD, buffer, sizeof(buffer), 0);
+    write(connFD, "Enter Customer ID to modify: ", strlen("Enter Customer ID to modify: "));
+    read(connFD, buffer, sizeof(buffer));
     customerID = atoi(buffer);
 
     int customerFileFD = open(CUSTOMER_FILE, O_RDWR);
@@ -232,20 +240,20 @@ bool modify_customer_details(int connFD) {
     }
 
     // Modify customer details
-    send(connFD, "Enter new Customer Name (leave blank for no change):", strlen("Enter new Customer Name (leave blank for no change):"), 0);
-    recv(connFD, buffer, sizeof(buffer), 0);
+    write(connFD, "Enter new Customer Name (leave blank for no change):", strlen("Enter new Customer Name (leave blank for no change):"));
+    read(connFD, buffer, sizeof(buffer));
     if (strlen(buffer) > 0) {
         strcpy(updatedCustomer.name, buffer);
     }
 
-    send(connFD, "Enter new Customer Gender (leave blank for no change): ", strlen("Enter new Customer Gender (leave blank for no change): "), 0);
-    recv(connFD, buffer, sizeof(buffer), 0);
+    write(connFD, "Enter new Customer Gender (leave blank for no change): ", strlen("Enter new Customer Gender (leave blank for no change): "));
+    read(connFD, buffer, sizeof(buffer));
     if (strlen(buffer) > 0) {
         updatedCustomer.gender = buffer[0];
     }
 
-    send(connFD, "Enter new Customer Age (leave blank for no change): ", strlen("Enter new Customer Age (leave blank for no change): "), 0);
-    recv(connFD, buffer, sizeof(buffer), 0);
+    write(connFD, "Enter new Customer Age (leave blank for no change): ", strlen("Enter new Customer Age (leave blank for no change): "));
+    read(connFD, buffer, sizeof(buffer));
     if (strlen(buffer) > 0) {
         updatedCustomer.age = atoi(buffer);
     }
@@ -259,7 +267,7 @@ bool modify_customer_details(int connFD) {
     }
 
     close(customerFileFD);
-    send(connFD, MODIFY_CUSTOMER_SUCCESS, strlen(MODIFY_CUSTOMER_SUCCESS), 0);
+    write(connFD, MODIFY_CUSTOMER_SUCCESS, strlen(MODIFY_CUSTOMER_SUCCESS));
     return true;
 }
 /*bool process_loan_application(int connFD) {
@@ -392,10 +400,10 @@ bool view_assigned_loan_applications(int connFD) {
     }
 
     if (strlen(writeBuffer) == 0) {
-        send(connFD, NO_LOAN_APPLICATIONS, strlen(NO_LOAN_APPLICATIONS), 0);
+        write(connFD, NO_LOAN_APPLICATIONS, strlen(NO_LOAN_APPLICATIONS));
     } else {
-        send(connFD, VIEW_LOAN_APPLICATIONS, strlen(VIEW_LOAN_APPLICATIONS), 0);
-        send(connFD, writeBuffer, strlen(writeBuffer), 0);
+        write(connFD, VIEW_LOAN_APPLICATIONS, strlen(VIEW_LOAN_APPLICATIONS));
+        write(connFD, writeBuffer, strlen(writeBuffer));
     }
 
     close(loanFileFD);
@@ -408,7 +416,7 @@ int get_next_customer_id(int connFD) {
 
     if (customerFileFD == -1) {
         perror("Error opening customer file for reading!");
-        send(connFD, "Error opening customer file for reading!\n", 42, 0);
+        write(connFD, "Error opening customer file for reading!\n", 42);
         return -1; // or handle as needed
     }
 
@@ -421,10 +429,10 @@ int get_next_customer_id(int connFD) {
 
     close(customerFileFD);
 
-    // Prepare the next customer ID to send back
+    // Prepare the next customer ID to write back
     char response[100];
     snprintf(response, sizeof(response), "Next Customer ID: %d\n", maxID + 1);
-    send(connFD, response, strlen(response), 0);
+    write(connFD, response, strlen(response));
 
     return maxID + 1; // Return the next available ID
 }
