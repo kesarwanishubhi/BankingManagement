@@ -1,0 +1,7 @@
+#ifndef ADMIN_CREDENTIALS
+#define ADMIN_CREDENTIALS
+
+#define ADMIN_LOGIN_ID "INTEREST-FREE"
+#define ADMIN_PASSWORD "12345" // "420boo69"
+
+#endif

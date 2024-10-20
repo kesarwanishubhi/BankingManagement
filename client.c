@@ -12,7 +12,7 @@
 
 
 
-#define PORT 8080
+#define PORT 9097
 #define BUFFER_SIZE 1024
 //void connection_handler(int sockFD);
 
@@ -57,12 +57,14 @@ int main() {
     printf("4. Administrator\n");
     printf("Enter the choice: ");
     fgets(choice, sizeof(choice), stdin);
-    choice[strcspn(choice, "\n")] = 0; // Remove newline character
+    choice[strcspn(choice, "\n")] = '\0'; // Remove newline character
 
     // Send user role choice to server
     write(sock, choice, strlen(choice));
     do{
         // printf("menu");
+        fflush(stdout);
+        fflush(stdin);
         bzero(readbuf, sizeof(readbuf));
         bzero(writebuf, sizeof(writebuf));
         readBytes=read(sock,readbuf,sizeof(readbuf));
@@ -77,15 +79,17 @@ int main() {
                 printf("%s \n",readbuf);
                 continue;
             }
-            else if(strchr(readbuf,'&')!=NULL){
-               strcpy(writebuf,getpass(readbuf));
-            } else {
+            else {
                 printf("%s \n", readbuf);
-                scanf("%[^\n]%*c", writebuf);
+                fflush(stdout);
+                fflush(stdin);
+                fgets(writebuf,sizeof(writebuf),stdin);
+                fflush(stdout);
+                fflush(stdin);
             }
+            writeBytes=write(sock,writebuf,sizeof(writebuf));
         }
         // printf("came here");
-        writeBytes=write(sock,writebuf,sizeof(writebuf));
 
     }while(readBytes>0);
 

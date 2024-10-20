@@ -173,11 +173,11 @@ bool deposit(int connFD)
 
     if (get_account_details(connFD, &account))
     {
-        
         if (account.active)
         {
-
-            writeBytes = send(connFD, DEPOSIT_AMOUNT, strlen(DEPOSIT_AMOUNT),0);
+            bzero(writeBuffer, sizeof(writeBuffer));
+            strncpy(writeBuffer, DEPOSIT_AMOUNT, sizeof(writeBuffer));
+            writeBytes = write(connFD, writeBuffer, strlen(writeBuffer));
             if (writeBytes == -1)
             {
                 perror("Error writing DEPOSIT_AMOUNT to client!");
@@ -186,7 +186,7 @@ bool deposit(int connFD)
             }
 
             bzero(readBuffer, sizeof(readBuffer));
-            readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+            readBytes = read(connFD, readBuffer, sizeof(readBuffer));
             if (readBytes == -1)
             {
                 perror("Error reading deposit money from client!");
@@ -197,10 +197,9 @@ bool deposit(int connFD)
             depositAmount = atol(readBuffer);
             if (depositAmount != 0)
             {
-
                 int newTransactionID = write_transaction_to_file(account.accountNumber, account.balance, account.balance + depositAmount, 1);
                 write_transaction_to_array(account.transactions, newTransactionID);
-                account.transactionCount++; 
+                account.transactionCount++;
 
                 account.balance += depositAmount;
 
@@ -227,21 +226,34 @@ bool deposit(int connFD)
                 lock.l_type = F_UNLCK;
                 fcntl(accountFileDescriptor, F_SETLK, &lock);
 
-                send(connFD, DEPOSIT_AMOUNT_SUCCESS, strlen(DEPOSIT_AMOUNT_SUCCESS),0);
-                recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read
+                bzero(writeBuffer, sizeof(writeBuffer));
+                strncpy(writeBuffer, DEPOSIT_AMOUNT_SUCCESS, sizeof(writeBuffer));
+                write(connFD, writeBuffer, strlen(writeBuffer));
+
+                bzero(readBuffer, sizeof(readBuffer)); // Dummy read
+                read(connFD, readBuffer, sizeof(readBuffer));
 
                 get_balance(connFD);
 
                 unlock_critical_section(&semOp);
-
                 return true;
             }
             else
-                writeBytes = send(connFD, DEPOSIT_AMOUNT_INVALID, strlen(DEPOSIT_AMOUNT_INVALID),0);
+            {
+                bzero(writeBuffer, sizeof(writeBuffer));
+                strncpy(writeBuffer, DEPOSIT_AMOUNT_INVALID, sizeof(writeBuffer));
+                write(connFD, writeBuffer, strlen(writeBuffer));
+            }
         }
         else
-            send(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED),0);
-        recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read
+        {
+            bzero(writeBuffer, sizeof(writeBuffer));
+            strncpy(writeBuffer, ACCOUNT_DEACTIVATED, sizeof(writeBuffer));
+            write(connFD, writeBuffer, strlen(writeBuffer));
+        }
+
+        bzero(readBuffer, sizeof(readBuffer)); // Dummy read
+        read(connFD, readBuffer, sizeof(readBuffer));
 
         unlock_critical_section(&semOp);
     }
@@ -251,7 +263,8 @@ bool deposit(int connFD)
         unlock_critical_section(&semOp);
         return false;
     }
-} 
+}
+
 bool withdraw(int connFD)
 {
     char readBuffer[1000], writeBuffer[1000];
@@ -270,16 +283,18 @@ bool withdraw(int connFD)
     {
         if (account.active)
         {
-            writeBytes = send(connFD, WITHDRAW_AMOUNT, strlen(WITHDRAW_AMOUNT),0);
+            bzero(writeBuffer, sizeof(writeBuffer));
+            strncpy(writeBuffer, WITHDRAW_AMOUNT, sizeof(writeBuffer));
+            writeBytes = write(connFD, writeBuffer, strlen(writeBuffer));
             if (writeBytes == -1)
             {
-                perror("Error writing WITHDRAWAL_AMOUNT to client!");
+                perror("Error writing WITHDRAW_AMOUNT to client!");
                 unlock_critical_section(&semOp);
                 return false;
             }
 
             bzero(readBuffer, sizeof(readBuffer));
-            readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+            readBytes = read(connFD, readBuffer, sizeof(readBuffer));
             if (readBytes == -1)
             {
                 perror("Error reading withdrawal money from client!");
@@ -319,8 +334,12 @@ bool withdraw(int connFD)
                 lock.l_type = F_UNLCK;
                 fcntl(accountFileDescriptor, F_SETLK, &lock);
 
-                send(connFD, WITHDRAW_AMOUNT_SUCCESS, strlen(WITHDRAW_AMOUNT_SUCCESS),0);
-                recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read
+                bzero(writeBuffer, sizeof(writeBuffer));
+                strncpy(writeBuffer, WITHDRAW_AMOUNT_SUCCESS, sizeof(writeBuffer));
+                write(connFD, writeBuffer, strlen(writeBuffer));
+
+                bzero(readBuffer, sizeof(readBuffer)); // Dummy read
+                read(connFD, readBuffer, sizeof(readBuffer));
 
                 get_balance(connFD);
 
@@ -331,18 +350,26 @@ bool withdraw(int connFD)
             }
             else if (withdrawalAmount <= 0)
             {
-                writeBytes = send(connFD, WITHDRAW_AMOUNT_INVALID, strlen(WITHDRAW_AMOUNT_INVALID),0);
+                bzero(writeBuffer, sizeof(writeBuffer));
+                strncpy(writeBuffer, WITHDRAW_AMOUNT_INVALID, sizeof(writeBuffer));
+                write(connFD, writeBuffer, strlen(writeBuffer));
             }
             else
             {
-                writeBytes = send(connFD, INSUFFICIENT_FUNDS, strlen(INSUFFICIENT_FUNDS),0);
+                bzero(writeBuffer, sizeof(writeBuffer));
+                strncpy(writeBuffer,"*Enter the valid amount", sizeof("*Enter the valid amount"));
+                write(connFD, writeBuffer, strlen(writeBuffer));
             }
         }
         else
         {
-            send(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED),0);
+            bzero(writeBuffer, sizeof(writeBuffer));
+            strncpy(writeBuffer, ACCOUNT_DEACTIVATED, sizeof(writeBuffer));
+            write(connFD, writeBuffer, strlen(writeBuffer));
         }
-        recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read
+        
+        bzero(readBuffer, sizeof(readBuffer)); // Dummy read
+        read(connFD, readBuffer, sizeof(readBuffer));
 
         unlock_critical_section(&semOp);
     }
@@ -371,9 +398,12 @@ bool get_balance(int connFD)
         if (account.active)
         {
             // Prepare the balance message
+            //snprintf(writeBuffer, sizeof(writeBuffer), "Your current balance is: %ld", account.balance);
+
+            bzero(writeBuffer, sizeof(writeBuffer));
             snprintf(writeBuffer, sizeof(writeBuffer), "Your current balance is: %ld", account.balance);
 
-            writeBytes = send(connFD, writeBuffer, strlen(writeBuffer),0);
+            writeBytes = write(connFD, writeBuffer, strlen(writeBuffer));
             if (writeBytes == -1)
             {
                 perror("Error writing balance to client!");
@@ -381,7 +411,14 @@ bool get_balance(int connFD)
                 return false;
             }
 
-            recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read to wait for client acknowledgment
+            bzero(readBuffer, sizeof(readBuffer)); // Dummy read to wait for client acknowledgment
+            readBytes = read(connFD, readBuffer, sizeof(readBuffer));
+            if (readBytes == -1)
+            {
+                perror("Error reading acknowledgment from client!");
+                unlock_critical_section(&semOp);
+                return false;
+            }
 
             unlock_critical_section(&semOp);
             return true;
@@ -389,7 +426,9 @@ bool get_balance(int connFD)
         else
         {
             // Account is deactivated
-            send(connFD, ACCOUNT_ID_DOESNT_EXIT, strlen(ACCOUNT_ID_DOESNT_EXIT),0);
+            bzero(writeBuffer, sizeof(writeBuffer));
+            strncpy(writeBuffer, ACCOUNT_ID_DOESNT_EXIT, sizeof(writeBuffer));
+            write(connFD, writeBuffer, strlen(writeBuffer));
         }
     }
     else
@@ -400,10 +439,12 @@ bool get_balance(int connFD)
     }
 
     // Dummy read to wait for client acknowledgment before unlocking
-    recv(connFD, readBuffer, sizeof(readBuffer),0); 
+    bzero(readBuffer, sizeof(readBuffer)); 
+    read(connFD, readBuffer, sizeof(readBuffer)); 
     unlock_critical_section(&semOp);
     return false; // Return false if the account is inactive
 }
+
 bool transfer_funds(int connFD) {
     char readBuffer[1000], writeBuffer[1000];
     ssize_t readBytes, writeBytes;
@@ -425,14 +466,20 @@ bool transfer_funds(int connFD) {
     }
 
     if (!senderAccount.active) {
-        send(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED),0);
+        bzero(writeBuffer, sizeof(writeBuffer));
+        strncpy(writeBuffer, ACCOUNT_DEACTIVATED, sizeof(writeBuffer));
+        write(connFD, writeBuffer, strlen(writeBuffer));
         unlock_critical_section(&semOp);
         return false; // Sender account is inactive
     }
 
     // Prompt for receiver account number
-    send(connFD, GET_ACCOUNT_NUMBER, strlen(GET_ACCOUNT_NUMBER),0);
-    readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+    bzero(writeBuffer, sizeof(writeBuffer));
+    strncpy(writeBuffer, GET_ACCOUNT_NUMBER, sizeof(writeBuffer));
+    write(connFD, writeBuffer, strlen(writeBuffer));
+
+    bzero(readBuffer, sizeof(readBuffer));
+    readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1) {
         perror("Error reading receiver account number from client!");
         unlock_critical_section(&semOp);
@@ -443,21 +490,29 @@ bool transfer_funds(int connFD) {
     // Check if the receiver account exists
     receiverAccount.accountNumber = receiverAccountNumber;
     if (!get_account_details(connFD, &receiverAccount)) {
-        write(connFD, ACCOUNT_ID_DOESNT_EXIT, strlen(ACCOUNT_ID_DOESNT_EXIT));
+        bzero(writeBuffer, sizeof(writeBuffer));
+        strncpy(writeBuffer, ACCOUNT_ID_DOESNT_EXIT, sizeof(writeBuffer));
+        write(connFD, writeBuffer, strlen(writeBuffer));
         unlock_critical_section(&semOp);
         return false; // Receiver account does not exist
     }
 
     // Check if sender and receiver accounts are the same
     if (senderAccount.accountNumber == receiverAccount.accountNumber) {
-        send(connFD, "Cannot transfer funds to the same account.", 42,0);
+        bzero(writeBuffer, sizeof(writeBuffer));
+        strncpy(writeBuffer, "Cannot transfer funds to the same account.", sizeof(writeBuffer));
+        write(connFD, writeBuffer, strlen(writeBuffer));
         unlock_critical_section(&semOp);
         return false; // Can't transfer to the same account
     }
 
     // Prompt for transfer amount
-    send(connFD, WITHDRAW_AMOUNT, strlen(WITHDRAW_AMOUNT),0);
-    readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+    bzero(writeBuffer, sizeof(writeBuffer));
+    strncpy(writeBuffer, WITHDRAW_AMOUNT, sizeof(writeBuffer));
+    write(connFD, writeBuffer, strlen(writeBuffer));
+
+    bzero(readBuffer, sizeof(readBuffer));
+    readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1) {
         perror("Error reading transfer amount from client!");
         unlock_critical_section(&semOp);
@@ -467,7 +522,9 @@ bool transfer_funds(int connFD) {
 
     // Validate transfer amount
     if (transferAmount <= 0 || transferAmount > senderAccount.balance) {
-        send(connFD, WITHDRAW_AMOUNT_INVALID, strlen(WITHDRAW_AMOUNT_INVALID),0);
+        bzero(writeBuffer, sizeof(writeBuffer));
+        strncpy(writeBuffer, WITHDRAW_AMOUNT_INVALID, sizeof(writeBuffer));
+        write(connFD, writeBuffer, strlen(writeBuffer));
         unlock_critical_section(&semOp);
         return false; // Invalid transfer amount
     }
@@ -516,9 +573,12 @@ bool transfer_funds(int connFD) {
     close(accountFileDescriptor); // Close account file descriptor
 
     // Send success message to client
-    send(connFD, WITHDRAW_AMOUNT_SUCCESS, strlen(WITHDRAW_AMOUNT_SUCCESS),0);
+    bzero(writeBuffer, sizeof(writeBuffer));
+    strncpy(writeBuffer, WITHDRAW_AMOUNT_SUCCESS, sizeof(writeBuffer));
+    write(connFD, writeBuffer, strlen(writeBuffer));
 
-    recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read for client acknowledgment
+    bzero(readBuffer, sizeof(readBuffer)); // Dummy read for client acknowledgment
+    read(connFD, readBuffer, sizeof(readBuffer));
 
     unlock_critical_section(&semOp);
     return true; // Successful fund transfer
@@ -529,15 +589,11 @@ bool change_password(int connFD)
     char readBuffer[1000], writeBuffer[1000];
     ssize_t readBytes, writeBytes;
 
-    
-
     // Lock the critical section
     struct sembuf semOp;
     lock_critical_section(&semOp);
 
     // Get current account details
-    
-
     if (!loggedInCustomer.active)
     {
         write(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED));
@@ -547,6 +603,7 @@ bool change_password(int connFD)
 
     // Prompt for old password
     write(connFD, PASSWORD_CHANGE_OLD_PASS, strlen(PASSWORD_CHANGE_OLD_PASS));
+    bzero(readBuffer, sizeof(readBuffer));
     readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1)
     {
@@ -558,14 +615,15 @@ bool change_password(int connFD)
     // Validate old password
     if (strcmp(readBuffer, loggedInCustomer.password) != 0) // Assuming account.password stores the current password
     {
-        send(connFD, PASSWORD_CHANGE_OLD_PASS_INVALID, strlen(PASSWORD_CHANGE_OLD_PASS_INVALID),0);
+        write(connFD, PASSWORD_CHANGE_OLD_PASS_INVALID, strlen(PASSWORD_CHANGE_OLD_PASS_INVALID));
         unlock_critical_section(&semOp);
         return false; // Old password is incorrect
     }
 
     // Prompt for new password
-    send(connFD, PASSWORD_CHANGE_NEW_PASS, strlen(PASSWORD_CHANGE_NEW_PASS),0);
-    readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+    write(connFD, PASSWORD_CHANGE_NEW_PASS, strlen(PASSWORD_CHANGE_NEW_PASS));
+    bzero(readBuffer, sizeof(readBuffer));
+    readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1)
     {
         perror("Error reading new password from client!");
@@ -576,8 +634,9 @@ bool change_password(int connFD)
     strncpy(newPassword, readBuffer, sizeof(newPassword)); // Copy new password
 
     // Prompt to re-enter new password
-    send(connFD, PASSWORD_CHANGE_NEW_PASS_RE, strlen(PASSWORD_CHANGE_NEW_PASS_RE),0);
-    readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+    write(connFD, PASSWORD_CHANGE_NEW_PASS_RE, strlen(PASSWORD_CHANGE_NEW_PASS_RE));
+    bzero(readBuffer, sizeof(readBuffer));
+    readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1)
     {
         perror("Error reading re-entered new password from client!");
@@ -588,7 +647,7 @@ bool change_password(int connFD)
     // Validate new password match
     if (strcmp(newPassword, readBuffer) != 0)
     {
-        send(connFD, PASSWORD_CHANGE_NEW_PASS_INVALID, strlen(PASSWORD_CHANGE_NEW_PASS_INVALID),0);
+        write(connFD, PASSWORD_CHANGE_NEW_PASS_INVALID, strlen(PASSWORD_CHANGE_NEW_PASS_INVALID));
         unlock_critical_section(&semOp);
         return false; // New passwords do not match
     }
@@ -617,13 +676,15 @@ bool change_password(int connFD)
     fcntl(accountFileDescriptor, F_SETLK, &lock);
 
     // Send success message to client
-    send(connFD, PASSWORD_CHANGE_SUCCESS, strlen(PASSWORD_CHANGE_SUCCESS),0);
+    write(connFD, PASSWORD_CHANGE_SUCCESS, strlen(PASSWORD_CHANGE_SUCCESS));
 
-    recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read for client acknowledgment
+    bzero(readBuffer, sizeof(readBuffer)); // Dummy read for client acknowledgment
+    read(connFD, readBuffer, sizeof(readBuffer));
 
     unlock_critical_section(&semOp);
     return true; // Password change was successful
 }
+
 bool lock_critical_section(struct sembuf *semOp)
 {
     semOp->sem_flg = SEM_UNDO;
@@ -691,7 +752,7 @@ bool view_transaction_history(int connFD)
 
     if (!account.active)
     {
-        send(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED),0);
+        write(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED));
         unlock_critical_section(&semOp);
         return false; // Account is inactive
     }
@@ -699,13 +760,13 @@ bool view_transaction_history(int connFD)
     // Check if there are transactions
     if (account.transactionCount == 0)
     {
-        send(connFD, TRANSACTIONS_NOT_FOUND, strlen(TRANSACTIONS_NOT_FOUND),0);
+        write(connFD, TRANSACTIONS_NOT_FOUND, strlen(TRANSACTIONS_NOT_FOUND));
         unlock_critical_section(&semOp);
         return false; // No transactions found
     }
 
     // Send the header for transaction history
-    send(connFD, "Transaction History:\n", 22,0);
+    write(connFD, "Transaction History:\n", 22);
 
     // Iterate through transaction IDs and retrieve their details
     for (int i = 0; i < account.transactionCount; i++)
@@ -715,7 +776,7 @@ bool view_transaction_history(int connFD)
         struct Transaction transaction;
         if (!get_transaction_details(transactionID, &transaction)) // Retrieve full transaction details
         {
-            send(connFD, "Error retrieving transaction details.\n", 38,0);
+            write(connFD, "Error retrieving transaction details.\n", 38);
             continue; // Skip this transaction if there's an error
         }
 
@@ -726,14 +787,16 @@ bool view_transaction_history(int connFD)
                  transaction.newBalance, 
                  transaction.operation == 1 ? "Deposit" : "Withdrawal");
 
-        send(connFD, readBuffer, strlen(readBuffer),0); // Send transaction info
+        write(connFD, readBuffer, strlen(readBuffer)); // Send transaction info
     }
 
-    recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read for client acknowledgment
+    bzero(readBuffer, sizeof(readBuffer)); // Dummy read for client acknowledgment
+    read(connFD, readBuffer, sizeof(readBuffer));
 
     unlock_critical_section(&semOp);
     return true; // Transaction history viewed successfully
 }
+
 
 bool loan(int connFD)
 {
@@ -756,14 +819,15 @@ bool loan(int connFD)
 
     if (!account.active)
     {
-        send(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED),0);
+        write(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED)); // Account is inactive
         unlock_critical_section(&semOp);
-        return false; // Account is inactive
+        return false;
     }
 
     // Prompt for loan amount
-    send(connFD, LOAN_AMOUNT_PROMPT, strlen(LOAN_AMOUNT_PROMPT),0);//Enter the amount you wish to apply for the loan:
-    readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+    write(connFD, LOAN_AMOUNT_PROMPT, strlen(LOAN_AMOUNT_PROMPT)); // Enter the amount you wish to apply for the loan:
+    bzero(readBuffer, sizeof(readBuffer));
+    readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1)
     {
         perror("Error reading loan amount from client!");
@@ -774,14 +838,15 @@ bool loan(int connFD)
     long int loanAmount = atol(readBuffer); // Convert input to long int
     if (loanAmount <= 0)
     {
-        send(connFD, LOAN_AMOUNT_INVALID, strlen(LOAN_AMOUNT_INVALID),0);
+        write(connFD, LOAN_AMOUNT_INVALID, strlen(LOAN_AMOUNT_INVALID)); // Invalid loan amount
         unlock_critical_section(&semOp);
-        return false; // Invalid loan amount
+        return false;
     }
 
     // Prompt for loan purpose
-    send(connFD, LOAN_PURPOSE_PROMPT, strlen(LOAN_PURPOSE_PROMPT),0);//Enter the purpose for the loan: "
-    readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+    write(connFD, LOAN_PURPOSE_PROMPT, strlen(LOAN_PURPOSE_PROMPT)); // Enter the purpose for the loan:
+    bzero(readBuffer, sizeof(readBuffer));
+    readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1)
     {
         perror("Error reading loan purpose from client!");
@@ -798,16 +863,17 @@ bool loan(int connFD)
     int newLoanID = log_loan_application(account.accountNumber, loanAmount, loanPurpose);
     if (newLoanID == -1)
     {
-        send(connFD, LOAN_APPLICATION_FAILURE, strlen(LOAN_APPLICATION_FAILURE),0);
+        write(connFD, LOAN_APPLICATION_FAILURE, strlen(LOAN_APPLICATION_FAILURE)); // Failed to log loan application
         unlock_critical_section(&semOp);
-        return false; // Failed to log loan application
+        return false;
     }
 
     // Send success message to client
     snprintf(writeBuffer, sizeof(writeBuffer), "%s%d\n", LOAN_APPLICATION_SUCCESS, newLoanID);
-    send(connFD, writeBuffer, strlen(writeBuffer),0); // Send loan application ID
+    write(connFD, writeBuffer, strlen(writeBuffer)); // Send loan application ID
 
-    recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read for client acknowledgment
+    bzero(readBuffer, sizeof(readBuffer)); // Dummy read for client acknowledgment
+    read(connFD, readBuffer, sizeof(readBuffer));
 
     unlock_critical_section(&semOp);
     return true; // Loan application submitted successfully
@@ -837,8 +903,8 @@ int log_loan_application(int accountNumber, long int loanAmount, const char *loa
     // Prepare the loan data to write to the file
     char buffer[1024];
     int len = snprintf(buffer, sizeof(buffer),
-                       "LoanID: %d\nAccountNumber: %d\nLoanAmount: %ld\nCustomerId: %d\nLoanPurpose: %s\nStatus: %s\nApplicationDate: %s------------------------------------\n",
-                       loanID, accountNumber, loanAmount,loggedInCustomer.id, loanPurpose,"pending" ,formattedTime);
+                       "LoanID: %d\nAccountNumber: %d\nLoanAmount: %ld\nCustomerId: %d\nisAssigned: %d\nLoanPurpose: %s\nStatus: %s\nApplicationDate: %s------------------------------------\n",
+                       loanID, accountNumber, loanAmount,loggedInCustomer.id,1, loanPurpose,"pending" ,formattedTime);
 
     // Write the loan data to the file using system call
     ssize_t writeBytes = write(file, buffer, len);
@@ -876,14 +942,15 @@ bool feedback(int connFD)
 
     if (!account.active)
     {
-        send(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED),0);
+        write(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED)); // Account is inactive
         unlock_critical_section(&semOp);
-        return false; // Account is inactive
+        return false;
     }
 
     // Prompt for feedback
-    send(connFD, FEEDBACK_PROMPT, strlen(FEEDBACK_PROMPT),0); //Please enter your feedback (max 500 characters): 
-    readBytes = recv(connFD, readBuffer, sizeof(readBuffer),0);
+    write(connFD, FEEDBACK_PROMPT, strlen(FEEDBACK_PROMPT)); // Please enter your feedback (max 500 characters): 
+    bzero(readBuffer, sizeof(readBuffer));
+    readBytes = read(connFD, readBuffer, sizeof(readBuffer));
     if (readBytes == -1)
     {
         perror("Error reading feedback from client!");
@@ -893,28 +960,30 @@ bool feedback(int connFD)
 
     if (strlen(readBuffer) > 500)
     {
-        send(connFD, FEEDBACK_TOO_LONG, strlen(FEEDBACK_TOO_LONG),0);
+        write(connFD, FEEDBACK_TOO_LONG, strlen(FEEDBACK_TOO_LONG)); // Feedback too long
         unlock_critical_section(&semOp);
-        return false; // Feedback too long
+        return false;
     }
 
     // Log the feedback
     int newFeedbackID = log_feedback_to_file(account.accountNumber, readBuffer);
     if (newFeedbackID == -1)
     {
-        send(connFD, FEEDBACK_FAILURE, strlen(FEEDBACK_FAILURE),0);
+        write(connFD, FEEDBACK_FAILURE, strlen(FEEDBACK_FAILURE)); // Failed to log feedback
         unlock_critical_section(&semOp);
-        return false; // Failed to log feedback
+        return false;
     }
 
     // Send success message to client
-    send(connFD, FEEDBACK_SUCCESS, strlen(FEEDBACK_SUCCESS),0);
+    write(connFD, FEEDBACK_SUCCESS, strlen(FEEDBACK_SUCCESS));
 
-    recv(connFD, readBuffer, sizeof(readBuffer),0); // Dummy read for client acknowledgment
+    bzero(readBuffer, sizeof(readBuffer)); // Dummy read for client acknowledgment
+    read(connFD, readBuffer, sizeof(readBuffer));
 
     unlock_critical_section(&semOp);
     return true; // Feedback submitted successfully
 }
+
 int log_feedback_to_file(int accountNumber, const char *feedbackText) {
     // Open the feedback file in append mode
     int file = open(FEEDBACK_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);  

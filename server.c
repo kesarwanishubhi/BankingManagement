@@ -7,16 +7,15 @@
 #include <arpa/inet.h>
 #include "./fun/customer.h"
 #include "./fun/employee.h"
+#include "./fun/manager.h"
+#include "./fun/administrator.h"
 
-#define PORT 8080
+#define PORT 9097
 #define BUFFER_SIZE 1024
 
 // Function prototypes
 void *handleClient(void *socket_desc);
-void handleCustomer(int client_sock);
-void handleBankEmployee(int client_sock);
-void handleManager(int client_sock);
-void handleAdministrator(int client_sock);
+
 
 int main() {
     int server_fd, client_sock, *new_sock;
@@ -104,24 +103,25 @@ void *handleClient(void *socket_desc) {
         case 2:
             //char message[] = "Bank Employee Menu: \n1. Add New Customer\n2. Modify Customer Details\n3. Process Loan Applications\n4. View Customer Transactions\n Enter the choice\n";
             //write(client_sock, message, strlen(message));
-            printf("Hello \n");
+            //printf("Hello \n");
             empl_handler(client_sock);
             
             break;
         case 3:
             //char message[] = "Manager Menu: \n1. Activate/Deactivate Customer Accounts\n2. Assign Loan Applications\n3. Review Customer Feedback\n Enter the choice\n";
             //write(client_sock, message, strlen(message));
-            //handleManager(client_sock);
-            printf("Hello");
+            managerLogin(client_sock);
+            //printf("Hello");
             break;
         case 4:
             //char message[] = "Administrator Menu: \n1. Add New Bank Employee\n2. Modify Customer/Employee Details\n3. Manage User Roles\n Enter the choice\n";
             //write(client_sock, message, strlen(message));
             //handleAdministrator(client_sock);
-            printf("Hello");
+            adminLogin(client_sock);
+            //printf("Hello");
             break;
         default:
-            write(client_sock, "Invalid choice. Please try again.\n", strlen("Invalid choice. Please try again.\n"));
+            write(client_sock, "*Invalid choice. Please try again.\n", strlen("*Invalid choice. Please try again.\n"));
             break;
     }
 
@@ -132,23 +132,3 @@ void *handleClient(void *socket_desc) {
     return NULL;
 }
 
-/*// Function to handle Customer operations
-void handleCustomer(int client_sock) {
-    
-}
-
-// Function to handle Bank Employee operations
-void handleBankEmployee(int client_sock) {
-    
-}
-
-// Function to handle Manager operations
-void handleManager(int client_sock) {
-    
-}
-
-// Function to handle Administrator operations
-void handleAdministrator(int client_sock) {
-    
-}
-*/

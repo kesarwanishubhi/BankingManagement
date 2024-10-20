@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <stdbool.h> 
+#include <stdbool.h>
 #include <errno.h>
 
 #include "../account.h"
@@ -15,15 +15,12 @@
 #include "../loan.h"
 #include "../feedback.h"
 #include "../employee.h"
-
-
-
 #include "../fun/constants.h"
 
 
 // Function Prototypes
-bool empl_handler(int connFD);
 bool add_new_customer(int connFD);
+bool empl_handler(int connFD);
 bool modify_customer_details(int connFD);
 //bool process_loan_application(int connFD);
 bool approve_reject_loan(int connFD);
@@ -31,30 +28,31 @@ bool view_assigned_loan_applications(int connFD);
 int get_next_customer_id();
 
 //=================================================================================================================
-bool empl_handler(int connFD) {
+bool empl_handler(int connFD)
+{
     char buffer[1024];
     
-    char loginID[50], password[50];
+    char loginID[1024], password[1024];
 
     // Employee Login Process
     write(connFD, "&Enter Login ID: \n", strlen("&Enter Login ID: \n"));
-    ssize_t readBytes = read(connFD, loginID, sizeof(loginID) - 1); // Receive login ID
+    ssize_t readBytes = read(connFD, loginID, sizeof(loginID)); // Receive login ID
     if (readBytes <= 0) {
         printf("Error receiving login ID.\n");
         return false;
     }
-    loginID[readBytes] = '\0';  // Null-terminate the login ID
-    loginID[strcspn(loginID, "\n")] = 0; // Remove newline character if any
+    // loginID[readBytes] = '\0';  // Null-terminate the login ID
+    loginID[strcspn(loginID, "\n")] = '\0'; // Remove newline character if any
     printf("Received Login ID: %s\n", loginID);  // Debugging line
 
     write(connFD, "&Enter Password: \n", strlen("&Enter Password: \n"));
-    readBytes = read(connFD, password, sizeof(password) - 1);  // Receive password
+    readBytes = read(connFD, password, sizeof(password));  // Receive password
     if (readBytes <= 0) {
         printf("Error receiving password.\n");
         return false;
     }
-    password[readBytes] = '\0';  // Null-terminate the password
-    password[strcspn(password, "\n")] = 0; // Remove newline character if any
+    // password[readBytes] = '\0';  // Null-terminate the password
+    password[strcspn(password, "\n")] = '\0'; // Remove newline character if any
     printf("Received Password: %s\n", password);  // Debugging line
 
     // // Check login credentials
@@ -86,13 +84,12 @@ bool empl_handler(int connFD) {
         
         write(connFD, menu, strlen(menu));
         printf("SENT MEnu \n");
-        readBytes = read(connFD, buffer, sizeof(buffer) - 1);  // Receive user's choice
+        readBytes = read(connFD, buffer, sizeof(buffer));  // Receive user's choice
         printf("Received");
         if (readBytes <= 0) {
             printf("Error receiving choice.\n");
             break;
-        }
-        buffer[readBytes] = '\0';  // Null-terminate the input
+        }  // Null-terminate the input
         int choice = atoi(buffer);
 
         switch (choice) {
@@ -147,7 +144,7 @@ bool add_new_customer(int connFD) {
     ssize_t writeBytes;
 
     // Get the next available customer ID
-    newCustomer.id = get_next_customer_id();
+    //newCustomer.id = get_next_customer_id();
 
     // Prompt for customer details
     write(connFD, "&Enter Customer Name: \n", strlen("&Enter Customer Name: \n"));
