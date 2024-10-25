@@ -12,7 +12,7 @@
 
 
 
-#define PORT 9096
+#define PORT 9098
 #define BUFFER_SIZE 1024
 //void connection_handler(int sockFD);
 
@@ -124,11 +124,14 @@ int main() {
         printf("Received special message: %s\n", readbuf);
         continue;
     } else {
+        printf("I came &");
         printf("%s \n", readbuf);
         fflush(stdout);
         fflush(stdin);
-        scanf("%s", writebuf); // Ensure input is sanitized and not larger than expected
+        scanf("%s", writebuf);// Ensure input is sanitized and not larger than expected
+        printf("%s",writebuf);
         writeBytes = send(sock, writebuf, strlen(writebuf), 0); // Send the length of the string
+        printf("I sent\n");
         if (writeBytes < 0) {
             perror("send error");
         }

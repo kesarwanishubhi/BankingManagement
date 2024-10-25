@@ -24,9 +24,9 @@
 #define CUSTOMER_ID_DOESNT_EXIT "*No customer could be found for the given ID"
 #define CUSTOMER_LOGIN_ID_DOESNT_EXIT "*No customer could be found for the given login ID$"
 
-#define ACCOUNT_ID_DOESNT_EXIT "*No account could be found for the given account number"
+#define ACCOUNT_ID_DOESNT_EXIT "*No account could be found for the given account number\n"
 
-#define TRANSACTIONS_NOT_FOUND "*No transactions were performed on this account by the customer!^"
+#define TRANSACTIONS_NOT_FOUND "*No transactions were performed on this account by the customer!\n"
 
 // ====================================================
 
@@ -96,11 +96,11 @@
 #define CUSTOMER_LOGOUT "*Logging you out now dear customer! Good bye!$"
 
 // ADMIN MENU
-#define CUSTOMER_MENU "*1. Transaction History\n2. Deposit Money\n3. Withdraw Money\n4. Get Balance\n5. Get Transaction information\n6. Change Password\n7. Change Password\n8. Apply for Loan\n9. Logout\n"
+#define CUSTOMER_MENU "& Login Sucess \n1. Transaction History\n2. Deposit Money\n3. Withdraw Money\n4. Get Balance\n5. Get Transaction information\n6. Change Password\n7.Feedback\n8. Apply for Loan\n9. Logout\nEnter the choice\n"
 #define WRONG_CHOICE "*INVALID CHOICE"
-#define ACCOUNT_DEACTIVATED "*It seems your account has been deactivated!^"
+#define ACCOUNT_DEACTIVATED "*It seems your account has been deactivated!\n"
 
-#define DEPOSIT_AMOUNT "&How much is it that you want to add into your bank?"
+#define DEPOSIT_AMOUNT "&How much is it that you want to add into your bank?\n"
 #define DEPOSIT_AMOUNT_INVALID "*You seem to have passed an invalid amount!^"
 #define DEPOSIT_AMOUNT_SUCCESS "*The specified amount has been successfully added to your bank account!^"
 
@@ -108,12 +108,12 @@
 #define WITHDRAW_AMOUNT_INVALID "*You seem to have either passed an invalid amount or you don't have enough money in your bank to withdraw the specified amount^"
 #define WITHDRAW_AMOUNT_SUCCESS "*The specified amount has been successfully withdrawn from your bank account!^"
 
-#define PASSWORD_CHANGE_OLD_PASS "&Enter your old password"
+#define PASSWORD_CHANGE_OLD_PASS "&Enter your old password\n"
 #define PASSWORD_CHANGE_OLD_PASS_INVALID "*The entered password doesn't seem to match with the old password"
-#define PASSWORD_CHANGE_NEW_PASS "&Enter the new password"
+#define PASSWORD_CHANGE_NEW_PASS "&Enter the new password\n"
 #define PASSWORD_CHANGE_NEW_PASS_RE "&Reenter the new password"
-#define PASSWORD_CHANGE_NEW_PASS_INVALID "*The new password and the reentered passwords don't seem to pass!^"
-#define PASSWORD_CHANGE_SUCCESS "*Password successfully changed!^"
+#define PASSWORD_CHANGE_NEW_PASS_INVALID "*The new password and the reentered passwords don't seem to pass!^\n"
+#define PASSWORD_CHANGE_SUCCESS "*Password successfully changed!\n"
 
 // ====================================================
 // ========== FEEDBACK SPECIFIC TEXT ====================
@@ -179,7 +179,7 @@
 #define MANAGER_REVIEW_FEEDBACK_PROMPT "*Here are the latest customer feedbacks:"
 #define NO_FEEDBACKS_AVAILABLE "*No feedbacks are available at the moment."
 #define INSUFFICIENT_FUNDS "*Not fund enough."
-#define ACCOUNT_DETAILS_ERROR "WRONG DETAILS."
+#define ACCOUNT_DETAILS_ERROR "*WRONG DETAILS.\n"
 #define MAX_EMPLOYEES  30
 #define MANAGER_LOGOUT  "LOGGING OUT"
 #define LOGIN_ATTEMPT_EXCEEDED "MAXIMUM  LOGIN ATTEMPTS EXCEEDED"

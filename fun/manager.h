@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "../account.h"
 #include "../customer.h"
@@ -19,16 +20,19 @@
 
 
 #include "../fun/constants.h"
+#define BUFFER_SIZE 1024
 
 int changeEmployeePassword(int connFD);
 int checkManagerCredentials(const char* loginID, const char* password);
 int readEmployeeData();
 void managerLogin(int connFD);
-void activateAccount(int connFD);
-void deactivateAccount(int connFD);
+bool activateAccount(int connFD);
+bool deactivateAccount(int connFD);
 void reviewCustomerFeedback(int connFD);
 void assignLoanApplication(int connFD);
 bool getEmployeeByID(int d, struct Employee *emp);
+void displayEmployeeIDs(int connFD);
+void displayLoanRequests(int connFD);
 struct Employee employees[MAX_EMPLOYEES];
 
 // Function to check manager credentials
@@ -136,19 +140,19 @@ void managerLogin(int connFD) {
 
                 switch (choice) {
                     case 1: // Activate/Deactivate Customer Account
-                        //activateAccount(connFD);  // Pass connFD to handle socket communication
+                        activateAccount(connFD);  // Pass connFD to handle socket communication
                         break;
                     case 2: // Assign Loan Applications
-                        //assignLoanApplication(connFD);
+                        assignLoanApplication(connFD);
                         break;
                     case 3: // Review Customer Feedback
-                        //reviewCustomerFeedback(connFD);  // Call feedback review function
+                        reviewCustomerFeedback(connFD);  // Call feedback review function
                         break;
                     case 4: // Change Password
-                        changeEmployeePassword(connFD);
+                        //changeEmployeePassword(connFD);
                         break;
                     case 5: // Deactivate Account
-                        //deactivateAccount(connFD);
+                        deactivateAccount(connFD);
                         break;
                     case 6: // Logout
                         //logout(connFD);
@@ -174,299 +178,368 @@ void managerLogin(int connFD) {
 
 
 // // Function to activate a customer account using system calls
-// void activateAccount(int connFD) {
-//     int accountID;
-//     struct Account account;
-//     FILE *file;
-//     char buffer[1024]; 
-//     bool accountFound = false;
+bool activateAccount(int connFD) {
+    FILE *file, *tempFile;
+    struct Account acc;
+    bool found = false;
 
-//     // Ask for the account ID to activate
-//     strcpy(buffer, "&");
-//     strcat(buffer, "Enter the account ID to activate: ");
-//     write(connFD, buffer, strlen(buffer));
+    char buffer[BUFFER_SIZE];
+    int accountNumber;
 
-//     // Read account ID from the client
-//     read(connFD, &accountID, sizeof(int));
+    // Prompt the customer for their account number
+    write(connFD, "&Enter your account number to activate: \n", 41);
+    bzero(buffer, sizeof(buffer)); // Clear the buffer
 
-//     // Open the account database file in read/write mode
-//     file = fopen("ACCOUNT_FILE", "rb+");  // Assuming accounts are stored in 'accounts.dat'
-//     if (file == NULL) {
-//         strcpy(buffer, "*");
-//         strcat(buffer, "Error: Could not open accounts database.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         return;
-//     }
+    // Read account number from the client
+    ssize_t bytesRead = read(connFD, buffer, sizeof(buffer) - 1);
+    if (bytesRead <= 0) {
+        perror("Error reading account number from client");
+        return false;
+    }
+    
+    // Convert the input to an integer
+    accountNumber = atoi(buffer);
 
-//     // Search for the account in the file
-//     while (fread(&account, sizeof(struct Account), 1, file)) {
-//         if (account.accountNumber == accountID) {
-//             accountFound = true;
-//             break;
-//         }
-//     }
+    // Open the account file for reading
+    file = fopen("acc.txt", "r");
+    if (!file) {
+        perror("Error opening account file");
+        return false;
+    }
 
-//     if (!accountFound) {
-//         strcpy(buffer, "*");
-//         strcat(buffer, "Error: Account not found.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         fclose(file);
-//         return;
-//     }
+    // Create a temporary file to store updated account data
+    tempFile = fopen("temp.txt", "w");
+    if (!tempFile) {
+        perror("Error creating temporary file");
+        fclose(file);
+        return false;
+    }
 
-//     // Check if the account is already active
-//     if (account.active) {
-//         strcpy(buffer, "*");
-//         strcat(buffer, "Account is already active.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         fclose(file);
-//         return;
-//     }
+    // Read the account file and search for the account
+    while (fscanf(file, "%d,%d,%d,%ld,%d\n", 
+                  &acc.accountNumber, 
+                  &acc.customerid, 
+                  &acc.active,  // Read active as int
+                  &acc.balance, 
+                  &acc.transactionCount) == 5) {
 
-//     // Activate the account
-//     account.active = true;
+        // Check if the account number matches
+        if (acc.accountNumber == accountNumber) {
+            found = true; // Account found
+            acc.active = 1; // Activate the account (set active to 1)
+            write(connFD, "*Account activated successfully.\n",sizeof("*Account activated successfully.\n"));
+        }
 
-//     // Move the file pointer to the location of the account record and update it
-//     fseek(file, -sizeof(struct Account), SEEK_CUR);
-//     fwrite(&account, sizeof(struct Account), 1, file);
+        // Write the account details back to the temporary file
+        fprintf(tempFile, "%d,%d,%d,%ld,%d\n", 
+                acc.accountNumber, 
+                acc.customerid, 
+                acc.active,  // Write active as int
+                acc.balance, 
+                acc.transactionCount);
+    }
 
-//     // Close the file
-//     fclose(file);
+    // Clean up
+    fclose(file);
+    fclose(tempFile);
 
-//     // Send success message to client
-//     strcpy(buffer, "*");
-//     strcat(buffer, "Account activated successfully.\n");
-//     write(connFD, buffer, strlen(buffer));
-// }
-// void deactivateAccount(int connFD) {
-//     int accountID;
-//     struct Account account;
-//     FILE *file;
-//     char buffer[1024];
-//     bool accountFound = false;
+    // Check if account was found
+    if (!found) {
+        write(connFD, "*Account not found.\n", 21);
+        remove("temp.txt"); // Remove temporary file if not found
+        return false;
+    }
 
-//     // Ask for the account ID to deactivate
-//     strcpy(buffer, "&");
-//     strcat(buffer, "Enter the account ID to deactivate: ");
-//     write(connFD, buffer, strlen(buffer));
+    // Replace the original account file with the updated data
+    remove("acc.txt"); // Delete the old account file
+    rename("temp.txt", "acc.txt"); // Rename temp file to original file name
 
-//     // Read account ID from the client
-//     read(connFD, &accountID, sizeof(int));
+    return true;
+}
+// Function to deactivate an account
+bool deactivateAccount(int connFD) {
+    FILE *file, *tempFile;
+    struct Account acc;
+    bool found = false;
+    char buffer[BUFFER_SIZE];
+    int accountNumber;
 
-//     // Open the account database file in read/write mode
-//     file = fopen("ACCOUNT_FILE", "rb+");  // Assuming accounts are stored in 'accounts.dat'
-//     if (file == NULL) {
-//         strcpy(buffer, "*");
-//         strcat(buffer, "Error: Could not open accounts database.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         return;
-//     }
+    // Prompt the customer for their account number
+    write(connFD, "&Enter your account number to deactivate: \n", 43);
+    bzero(buffer, sizeof(buffer)); // Clear the buffer
 
-//     // Search for the account in the file
-//     while (fread(&account, sizeof(struct Account), 1, file)) {
-//         if (account.accountNumber == accountID) {
-//             accountFound = true;
-//             break;
-//         }
-//     }
+    // Read account number from the client
+    ssize_t bytesRead = read(connFD, buffer, sizeof(buffer) - 1);
+    if (bytesRead <= 0) {
+        perror("Error reading account number from client");
+        return false;
+    }
+    
+    // Convert the input to an integer
+    accountNumber = atoi(buffer);
 
-//     if (!accountFound) {
-//         strcpy(buffer, "*");
-//         strcat(buffer, "Error: Account not found.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         fclose(file);
-//         return;
-//     }
+    // Open the account file for reading
+    file = fopen("acc.txt", "r");
+    if (!file) {
+        perror("Error opening account file");
+        return false;
+    }
 
-//     // Check if the account is already deactivated
-//     if (!account.active) {
-//         strcpy(buffer, "*");
-//         strcat(buffer, "Account is already deactivated.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         fclose(file);
-//         return;
-//     }
+    // Create a temporary file to store updated account data
+    tempFile = fopen("temp.txt", "w");
+    if (!tempFile) {
+        perror("Error creating temporary file");
+        fclose(file);
+        return false;
+    }
 
-//     // Deactivate the account
-//     account.active = false;
+    // Read the account file and search for the account
+    while (fscanf(file, "%d,%d,%d,%ld,%d\n", 
+                  &acc.accountNumber, 
+                  &acc.customerid, 
+                  &acc.active,  // Read active as int
+                  &acc.balance, 
+                  &acc.transactionCount) == 5) {
 
-//     // Move the file pointer to the location of the account record and update it
-//     fseek(file, -sizeof(struct Account), SEEK_CUR);
-//     fwrite(&account, sizeof(struct Account), 1, file);
+        // Check if the account number matches
+        if (acc.accountNumber == accountNumber) {
+            found = true; // Account found
+            acc.active = 0; // Deactivate the account (set active to 0)
+            write(connFD, "*Account deactivated successfully.\n",sizeof("*Account deactivated successfully.\n"));
+        }
 
-//     // Close the file
-//     fclose(file);
+        // Write the account details back to the temporary file
+        fprintf(tempFile, "%d,%d,%d,%ld,%d\n", 
+                acc.accountNumber, 
+                acc.customerid, 
+                acc.active,  // Write active as int
+                acc.balance, 
+                acc.transactionCount);
+    }
 
-//     // Send success message to client
-//     strcpy(buffer, "*");
-//     strcat(buffer, "Account deactivated successfully.\n");
-//     write(connFD, buffer, strlen(buffer));
-// }
+    // Clean up
+    fclose(file);
+    fclose(tempFile);
 
-// void assignLoanApplication(int connFD) {
-//     int loanFile;
-//     int tempFile;
-//     struct Loan loanApp;
-//     int employeeID;
-//     int foundUnassigned = 0;
-//     ssize_t bytesRead;
-//     char buffer[1024];
-//     struct Employee employee;
-//     int loanAssigned = 0;  // To track if a loan has been assigned
+    // Check if account was found
+    if (!found) {
+        write(connFD, "*Account not found.\n", 21);
+        remove("temp.txt"); // Remove temporary file if not found
+        return false;
+    }
 
-//     // Ask for employee ID
-//     strcpy(buffer, "&Enter the employee ID: ");  // Prompt for employee ID
-//     write(connFD, buffer, strlen(buffer));
+    // Replace the original account file with the updated data
+    remove("acc.txt"); // Delete the old account file
+    rename("temp.txt","acc.txt"); // Rename temp file to original file name
 
-//     // Clear buffer before reading employee ID
-//     bzero(buffer, sizeof(buffer));
-//     read(connFD, buffer, sizeof(buffer));  // Read employee ID from client
-//     employeeID = atoi(buffer);  // Convert input to integer
+    return true;
+}
+void reviewCustomerFeedback(int connFD) {
+    FILE *file;
+    struct Feedback feedback;
+    char buffer[BUFFER_SIZE];
 
-//     // Open the employee file and fetch the employee details
+    // Open the feedback file for reading
+    file = fopen("feed.txt", "r");
+    if (!file) {
+        perror("Error opening feedback file");
+        write(connFD, "*Error opening feedback file.\n", 31);
+        return;
+    }
 
-//     if (!getEmployeeByID(employeeID, &employee)) {
-//         // Send error message if employee not found
-//         strcpy(buffer, "*Employee not found.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         return;
-//     }
+    // Send a header to the client
+    //write(connFD, "Customer Feedback:\n", 20);
 
-//     // Check if the employee already has 10 loans assigned
-//     int assignedLoanCount = 0;
-//     for (int i = 0; i < LOAN_PURPOSE_MAX_LEN ; i++) {
-//         if (employee.l[i] != -1) {
-//             assignedLoanCount++;
-//         }
-//     }
+    // Read feedback data from the file
+    while (fscanf(file, "%d,%d,%d,%499[^,],%ld\n", 
+                  &feedback.customerID, 
+                  &feedback.feedbackID, 
+                  &feedback.accountNumber, 
+                  feedback.feedbackText, 
+                  &feedback.feedbackDate) == 5) {
 
-//     if (assignedLoanCount >= MAX_LOANS_PER_EMPLOYEE) {
-//         // Send error message if employee has already been assigned 5 loans
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*This employee already has the maximum number of loans assigned (5).\n");
-//         write(connFD, buffer, strlen(buffer));
-//         return;
-//     }
+        // Prepare feedback details for sending to the client
+        snprintf(buffer, sizeof(buffer),
+                 "*Customer ID: %d | Feedback ID: %d | Account Number: %d\n"
+                 "Feedback: %s\n"
+                 "Date: %s\n\n",
+                 feedback.customerID,
+                 feedback.feedbackID,
+                 feedback.accountNumber,
+                 feedback.feedbackText,
+                 ctime(&feedback.feedbackDate)); // Convert time_t to string
 
-//     // Open the loan application file for reading
-//     loanFile = open(LOAN_FILE, O_RDONLY);
-//     if (loanFile == -1) {
-//         // Send error message to client
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*Error opening loan application file.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         return;
-//     }
+        // Send feedback details to the client
+        write(connFD, buffer, strlen(buffer));
+    }
 
-//     // Open a temporary file for writing
-//     tempFile = open("temp_loan.bank", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-//     if (tempFile == -1) {
-//         // Send error message to client
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*Error opening temporary file.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         close(loanFile);
-//         return;
-//     }
+    // Clean up
+    fclose(file);
+}
+void displayLoanRequests(int connFD) {
+    FILE *loanFile = fopen("rloan.txt", "r");
+    if (!loanFile) {
+        send(connFD, "*Error: Unable to open loan requests file.\n", 44, 0);
+        return;
+    }
 
-//     // Read through the loan application file and list unassigned loans
-//      bzero(buffer, sizeof(buffer));
-//     strcpy(buffer, "*The following loans are not assigned yet:\n");
-//     write(connFD, buffer, strlen(buffer));
+    char line[1024];
+    char response[1024];
+    int responseLength = 0;
 
-//     while ((bytesRead = read(loanFile, &loanApp, sizeof(struct Loan))) > 0) {
-//         // Clear loanApp buffer before next read
-//         bzero(&loanApp, sizeof(struct Loan));
+    // Prepare the response header
+    responseLength += snprintf(response + responseLength, sizeof(response) - responseLength,
+                                "*Loan IDs:\n");
 
-//         if (loanApp.isAssigned == 0) {
-//             // List unassigned loan applications
-//             bzero(buffer, sizeof(buffer));
-//             sprintf(buffer, "*Loan ID: %d\n", loanApp.loanID);
-//             write(connFD, buffer, strlen(buffer));
-//             foundUnassigned = 1;
-//         }
-//     }
+    // Read and extract loan IDs
+    while (fgets(line, sizeof(line), loanFile)) {
+        struct Loan loan;
+        // Parse the CSV line into the loan structure
+        sscanf(line, "%d,%d,%ld,%d,%d,%[^\n]", &loan.loanID, &loan.accountNumber, &loan.loanAmount,
+               &loan.customerID, &loan.isAssigned, loan.loanPurpose);
+        
+        // Append the loan ID to the response
+        responseLength += snprintf(response + responseLength, sizeof(response) - responseLength,
+                                    "%d\n", loan.loanID);
+    }
 
-//     // If no unassigned loans were found
-//     if (!foundUnassigned) {
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*No unassigned loan applications available.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         close(loanFile);
-//         close(tempFile);
-//         return;
-//     }
+    fclose(loanFile);
 
-//     // Now ask the client to enter a loan ID to assign
-//      bzero(buffer, sizeof(buffer));
-//     strcpy(buffer, "&Enter the loan ID you want to assign: ");
-//     write(connFD, buffer, strlen(buffer));
+    // Send the loan IDs to the client
+    send(connFD, response, responseLength, 0);
+}
+void displayEmployeeIDs(int connFD) {
+    FILE *employeeFile = fopen("employee.txt", "r");
+    if (!employeeFile) {
+        const char *error_message = "*Error: Unable to open employee file.\n";
+        send(connFD, error_message, strlen(error_message), 0);
+        return;
+    }
 
-//     // Read the loan ID to be assigned from the client
-//     bzero(buffer, sizeof(buffer));
-//     read(connFD, buffer, sizeof(buffer));
-//     int loanIDToAssign = atoi(buffer);  // Convert input to integer
+    char line[1024];
+    char response[1024] = "*Employee IDs:\n"; // Initialize response with header
+    int responseLength = strlen(response);
+    int found = 0;
 
-//     // Rewind the file pointer and search for the selected loan ID
-//     lseek(loanFile, 0, SEEK_SET);
-//     while ((bytesRead = read(loanFile, &loanApp, sizeof(struct Loan))) > 0) {
-//         if (loanApp.loanID == loanIDToAssign && loanApp.isAssigned == 0) {
-//             // Assign the loan to the employee
-//             loanApp.isAssigned = 1;
+    // Read each line from the employee file
+    while (fgets(line, sizeof(line), employeeFile)) {
+        struct Employee employee;
+        
+        // Read employee details from the line
+        sscanf(line, "%49[^,],%d,%d,%49[^\n]", employee.name, &employee.id, &employee.type, employee.password);
+        
+        // Append the employee ID to the response
+        if(employee.type==0){
+        responseLength += snprintf(response + responseLength, sizeof(response) - responseLength,
+                                   "%d  \n", employee.id);
+        found = 1; // Mark that at least one employee was found
+    }
+}
 
-//             //loanApp.assignedEmployeeID = employeeID;
+    fclose(employeeFile);
 
-//             // Add the loan ID to the employee's assigned loans
-//             for (int i = 0; i < MAX_LOANS_PER_EMPLOYEE; i++) {
-//                 if (employee.l[i] == -1) {
-//                     employee.l[i] = loanApp.loanID;
-//                     loanAssigned = 1;
-//                     break;
-//                 }
-//             }
+    // If no employee was found, inform the client
+    if (!found) {
+        const char *no_employees_message = "*No employees found.\n";
+        send(connFD, no_employees_message, strlen(no_employees_message), 0);
+    } else {
+        // Send the response containing all employee IDs
+        send(connFD, response, responseLength, 0);
+    }
+}
+// Function to assign loan applications to an employee
+void assignLoanApplication(int connFD) {
+    // Display available employee IDs
+    displayEmployeeIDs(connFD);
 
-//             // Write the updated loan application to the temp file
-//             if (write(tempFile, &loanApp, sizeof(struct Loan)) == -1) {
-//                 strcpy(buffer, "*Error writing to temporary file.\n");
-//                 write(connFD, buffer, strlen(buffer));
-//                 close(loanFile);
-//                 close(tempFile);
-//                 return;
-//             }
+    // Display available loan requests
+    displayLoanRequests(connFD);
+    FILE *assignedFile = fopen("assloan.txt", "a");
+    if (!assignedFile) {
+        send(connFD, "Error: Unable to open loan assigned file.\n", 44, 0);
+        return;
+    }
 
-//             break;  // Stop searching after the loan has been assigned
-//         }
-//     }
+    // Open loan request file for reading
+    FILE *loanFile = fopen("rloan.txt", "r");
+    if (!loanFile) {
+        send(connFD, "Error: Unable to open loan requests file.\n", 44, 0);
+        fclose(assignedFile);
+        return;
+    }
 
-//     if (!loanAssigned) {
-//         // Send error message if loan couldn't be assigned
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*Loan assignment failed. Make sure the loan ID is valid.\n");
-//         write(connFD, buffer, strlen(buffer));
-//     } else {
-//         // Send success message to the client
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*Loan application assigned successfully.\n");
-//         write(connFD, buffer, strlen(buffer));
-//     }
 
-//     // Close the files
-//     close(loanFile);
-//     close(tempFile);
+    // Prepare to assign loan to employee
+    char line[1024];
+    int loanID, employeeID;
 
-//     // Replace the old file with the new one
-//     if (unlink(LOAN_FILE) == -1) {
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*Error deleting original loan application file.\n");
-//         write(connFD, buffer, strlen(buffer));
-//         return;
-//     }
-//     if (rename("temp_loan.bank", LOAN_FILE) == -1) {
-//          bzero(buffer, sizeof(buffer));
-//         strcpy(buffer, "*Error renaming temporary file to loan application file.\n");
-//         write(connFD, buffer, strlen(buffer));
-//     }
-// }
+    // Request employee ID to assign the loan
+    fflush(stdout);
+    send(connFD, "&Enter Employee ID to assign the loan: \n", 41, 0);
+    memset(line,'\0',sizeof(line));
+    read(connFD, line, sizeof(line));
+    printf("I %s",line);
+    employeeID = atoi(line);
+
+    // Ask for the Loan ID to assign
+    fflush(stdout);
+    send(connFD, "&Enter Loan ID to assign: \n", 28, 0);
+    memset(line,'\0',sizeof(line));
+    read(connFD, line, sizeof(line));
+    printf("I %s",line);
+    loanID = atoi(line);
+
+    // Open loan assigned file for writing
+   
+    // Create a temporary file for updating loan requests
+    FILE *tempFile = fopen("temp_loan_requests.txt", "w");
+    if (!tempFile) {
+        send(connFD, "Error: Unable to create temporary file.\n", 41, 0);
+        fclose(loanFile);
+        fclose(assignedFile);
+        return;
+    }
+
+    char loanLine[1024];
+    int found = 0;
+
+    // Process loans
+    while (fgets(loanLine, sizeof(loanLine), loanFile)) {
+        struct Loan loan;
+
+        // Read loan details
+        sscanf(loanLine, "%d,%d,%ld,%d,%d,%[^\n]", &loan.loanID, &loan.accountNumber, 
+               &loan.loanAmount, &loan.customerID, &loan.isAssigned, loan.loanPurpose);
+        
+        if (loan.loanID == loanID) {
+            // Loan matches the one to assign
+            fprintf(assignedFile, "%d,%d,%ld,%d,%d,%s\n", loan.loanID, loan.accountNumber, 
+                    loan.loanAmount, loan.customerID, employeeID, loan.loanPurpose);
+            found = 1; // Mark that we found and assigned this loan
+        } else {
+            // Keep the loan in requests
+            fprintf(tempFile, "%d,%d,%ld,%d,%d,%s\n", loan.loanID, loan.accountNumber, 
+                    loan.loanAmount, loan.customerID, loan.isAssigned, loan.loanPurpose);
+        }
+    }
+
+    fclose(loanFile);
+    fclose(tempFile);
+    fclose(assignedFile);
+
+    // Replace old request file with the updated one
+    remove("rloan.txt");
+    rename("temp_loan_requests.txt", "rloan.txt");
+
+    // Inform the user
+    if (found) {
+        snprintf(line, sizeof(line), "*Loan ID %d assigned to Employee ID %d.\n", loanID, employeeID);
+    } else {
+        snprintf(line, sizeof(line), "*Loan ID %d not found in requests.\n", loanID);
+    }
+    send(connFD, line, strlen(line), 0);
+}
+
 
 // void reviewCustomerFeedback(int connFD) {
 //     int feedbackFile;
@@ -525,94 +598,8 @@ void managerLogin(int connFD) {
 // }
 
 
-int changeEmployeePassword(int connFD) {
-    char oldPassword[1000];
-    char newPassword[1000];
-    char confirmPassword[1000];
-    char buffer[1024];     // Buffer for sending and receiving data
-     char str[20]; char loginID[200]; 
+  // End after incorrect old password
 
-    // Ask for old password
-        fflush(stdout);
-        send(connFD,LOGIN_ID, strlen(LOGIN_ID),0);
-        memset(loginID,'\0',sizeof(loginID));
-        read(connFD, loginID, sizeof(loginID));
-        printf("loginid %s \n",loginID);
-        FILE *file = fopen("employee.txt", "r"); // Open the employee data file in text format
-    if (file == NULL) {
-        printf("Error opening file.\n");
-        return 0; // Return 0 if the file can't be opened
-    }
-
-    struct Employee emp;
-    char line[256];int f=0; // Buffer to hold each line from the file
-    printf("I came here also\n");
-    // Read through the file to find the maximum ID using fgets and sscanf
-    while (fgets(line, sizeof(line), file)) 
-    {
-        printf("Came here!!!!!");
-        // Parse the CSV line and populate the employee struct
-        if (sscanf(line, "%[^,],%d,%d,%[^,]",  emp.name,&emp.id,&emp.type,emp.password) == 4 )
-        {
-            printf("\n%s\n", line);
-            if (emp.id==atoi(loginID)) {
-                printf("I reached inside login section \n");
-    
-                strcpy(buffer, "&Enter your old password: ");  // Prompt for old password
-                write(connFD, buffer, strlen(buffer));
-                emp.password[strcspn(emp.password, "\n")] = '\0';
-                // Clear the buffer before reading old password
-                memset(oldPassword,'\0', sizeof(oldPassword));
-                read(connFD, oldPassword, sizeof(oldPassword));  // Read old password from client
-                printf("\nold Password received: %s %ld", oldPassword, strlen(oldPassword));
-                printf("\nPassword in db: %s %ld", emp.password, strlen(emp.password));
-
-                // Check if the old password is correct
-    
-                if (strcmp(emp.password,oldPassword) == 0) {
-                    // Ask for new password
-                    fflush(stdout);
-                    strcpy(buffer, "&Enter your new password: \n");  // Prompt for new password
-                    write(connFD, buffer, strlen(buffer));
-
-                    // Clear the buffer before reading new password
-                    bzero(newPassword, sizeof(newPassword));
-                    read(connFD, newPassword, sizeof(newPassword));  // Read new password from client
-                    fflush(stdout);
-                    // Ask for confirmation of new password
-                    strcpy(buffer, "&Re-enter your new password: \n");  // Prompt for confirming new password
-                    write(connFD, buffer, strlen(buffer));
-                    fflush(stdout);
-                    // Clear the buffer before reading confirmation password
-                    bzero(confirmPassword, sizeof(confirmPassword));
-                    read(connFD, confirmPassword, sizeof(confirmPassword));  // Read confirmation password from client
-
-                    // Check if new password matches confirmation
-                    if (strcmp(newPassword, confirmPassword) == 0) {
-                        // Change the password
-                        strcpy(emp.password, newPassword);
-                        printf("New password %s \n",emp.password);
-                        // Inform the client that the password change was successful
-                        strcpy(buffer, "*Password changed successfully.\n");
-                        write(connFD, buffer, strlen(buffer));
-                    } else {
-                        // Inform the client that the passwords do not match
-                        strcpy(buffer, "*The new passwords do not match. Please try again.\n");
-                        write(connFD, buffer, strlen(buffer));
-                    }
-                    return 0;  // End after processing password change
-                }
-    }
-}
-}
-    
-
-    // If old password is incorrect, inform the client
-    strcpy(buffer, "*Old password is incorrect.\n");
-    write(connFD, buffer, strlen(buffer));
-
-    return 0;  // End after incorrect old password
-}
 
 #endif
 

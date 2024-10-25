@@ -21,6 +21,7 @@
 // Function Prototypes
 bool add_new_customer(int connFD);
 bool empl_handler(int connFD);
+bool change_p(int connFD);
 bool modify_customer_details(int connFD);
 //bool process_loan_application(int connFD);
 bool approve_reject_loan(int connFD);
@@ -163,9 +164,7 @@ bool empl_handler(int connFD)
                 //view_assigned_loan_applications(connFD);
                 break;
             case 5:
-                write(connFD, "*Change Password selected.\n", strlen("*Change Password selected.\n"));
-                // Implement change password logic here
-                printf("MEssage sent \n");
+                change_p(connFD);
                 break;
             case 6:
                 write(connFD, "*Logging out...\n", strlen("*Logging out...\n"));
@@ -402,6 +401,94 @@ bool modify_customer_details(int connFD) {
     rename("temp_custom.txt", "custom.txt");
 
     send(connFD, MODIFY_CUSTOMER_SUCCESS, strlen(MODIFY_CUSTOMER_SUCCESS), 0);
+    return true;
+}
+bool change_p(int connFD) {
+    FILE *file, *tempFile;
+    struct Employee emp;
+    int employeeID;
+    char buffer[300];
+    char oldPassword[50], newPassword[50], confirmPassword[50];
+    bool found = false;
+
+    // Open the employee file for reading
+    file = fopen("employee.txt", "r");
+    if (!file) {
+        perror("Error opening employee file");
+        return false;
+    }
+
+    // Create a temporary file to store updated employee data
+    tempFile = fopen("temp.txt", "w");
+    if (!tempFile) {
+        perror("Error creating temporary file");
+        fclose(file);
+        return false;
+    }
+    send(connFD, "&Enter Employee ID to modify: \n", strlen("&Enter Employee ID to modify: \n"), 0);
+    memset(buffer, '\0', sizeof(buffer));
+    recv(connFD, buffer, sizeof(buffer), 0);
+    employeeID = atoi(buffer);
+
+    // Prompt for old password
+    write(connFD, "&Enter your old password:\n", sizeof("&Enter your old password:\n"));
+    read(connFD, oldPassword, sizeof(oldPassword));
+
+    // Prompt for new password
+    write(connFD, "&Enter your new password:\n",sizeof("&Enter your new password:\n"));
+    read(connFD, newPassword, sizeof(newPassword));
+
+    // Prompt to confirm new password
+    write(connFD, "&Confirm your new password:\n",sizeof("&Confirm your new password:\n"));
+    read(connFD, confirmPassword, sizeof(confirmPassword));
+
+    // Read the employee file and search for the employee
+    while (fgets(emp.name, sizeof(emp.name), file)) {
+        char *token = strtok(emp.name, ","); // Read the first field (name)
+        strcpy(emp.name, token);              // Store name
+        token = strtok(NULL, ",");            // Read the second field (id)
+        emp.id = atoi(token);                 // Convert to integer
+        token = strtok(NULL, ",");            // Read the third field (type)
+        emp.type = atoi(token);               // Convert to integer
+        token = strtok(NULL, ",");            // Read the fourth field (password)
+        strcpy(emp.password, token);          // Store password
+
+        // Check if the employee ID matches
+        if (emp.id == employeeID) {
+            found = true; // Employee found
+            // Validate old password
+            if (strcmp(oldPassword, emp.password) == 0) {
+                // Old password is correct; check new password
+                if (strcmp(newPassword, confirmPassword) == 0) {
+                    // Update the password
+                    strcpy(emp.password, newPassword);
+                    write(connFD, "Password changed successfully.\n", 32);
+                } else {
+                    write(connFD, "*New passwords do not match. Password not changed.\n", 51);
+                }
+            } else {
+                write(connFD, "*Old password is incorrect. Password not changed.\n", 51);
+            }
+        }
+        // Write the employee details back to the temporary file
+        fprintf(tempFile, "%s,%d,%d,%s\n", emp.name, emp.id, emp.type, emp.password);
+    }
+
+    // Clean up
+    fclose(file);
+    fclose(tempFile);
+
+    // Check if employee was found
+    if (!found) {
+        write(connFD, "*Employee not found.\n", 22);
+        remove("temp.txt"); // Remove temporary file if not found
+        return false;
+    }
+
+    // Replace the original employee file with the updated data
+    remove("employee.txt"); // Delete the old employee file
+    rename("temp.txt","employee.txt"); // Rename temp file to original file name
+
     return true;
 }
 /*bool process_loan_application(int connFD) {

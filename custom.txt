@@ -1,7 +1,4 @@
-1,Rahul,M,23,Rahul-2,2345,1
+1,Shubhi,F,23,Shubhi-1,2345,1
 2,Meenal,F,28,Meenal-2,1234,1
-3,Anushka,F,45,Anushka-2,3456,1
-4,ANUJ,M,34,ANUJ-2,5678,1
-5,Dhruv,M,67,Dhruv-2,4567,1
-6,Soma,F,34,Soma-6,8888,1
-7,Ranjan,M,0,Ranjan-7,0,1
+3,Anushka,F,24,Anushka-3,3456,1
+4,Anshul,M,23,Anshul-4,5678,1

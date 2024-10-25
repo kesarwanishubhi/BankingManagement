@@ -2,7 +2,8 @@
 #define COMMON_FUNCTIONS
 
 #include <stdio.h>     // Import for `printf` & `perror`
-#include <unistd.h>    // Import for `read`, `write & `lseek`
+#include <unistd.h> 
+#include <time.h>   // Import for `read`, `write & `lseek`
 #include <string.h>    // Import for string functions
 #include <stdbool.h>    // Import for `bool` data type
 #include <sys/types.h> // Import for `open`, `lseek`
@@ -22,59 +23,52 @@ bool authenticate_customer(int id, const char* password, struct Customer* logged
 bool login_handler(int connFD, struct Customer *ptrToCustomer);
 bool get_account_details(int connFD, struct Account *customerAccount);
 bool get_customer_details(int connFD, int customerID);
-bool get_transaction_details(int connFD, struct Transaction *trans);
+//bool get_transaction_details(int connFD, struct Transaction *trans);
 bool get_transaction_detail(int connFD, int accountNumber);
 
 
 // Function to authenticate a customer by checking their ID and password in the file
-bool authenticate_customer(int id, const char* password, struct Customer* loggedInCustomer) {
-    FILE *file = fopen(CUSTOMER_FILE, "r");
-    if (file == NULL) {
-        perror("Error opening customer file");
+bool authenticate_customer(int id, const char *password, struct Customer *ptrToCustomer) {
+    FILE *file = fopen("custom.txt", "r");
+    if (!file) {
+        perror("Could not open customer file");
         return false;
     }
 
-    char line[5000];  // Buffer for each line (assuming a reasonably large line)
-    while (fgets(line, sizeof(line), file) != NULL) {
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
         struct Customer tempCustomer;
-        int isActive;
-
-        // Parse the line as "id,account,password,transactions...,active"
-        char transactions[1000];  // To temporarily store transactions
-        sscanf(line, "%d,%d,%[^,],%[^,],%d", &tempCustomer.id, &tempCustomer.account, tempCustomer.password, transactions, &isActive);
-        tempCustomer.active = (isActive == 1);
-
-        // Compare ID and password
-        if (id == tempCustomer.id && strcmp(password, tempCustomer.password) == 0 && tempCustomer.active) {
-            // Copy the customer details into the loggedInCustomer structure
-            *loggedInCustomer = tempCustomer;
-
-            // Parse the transactions into the transactions array
-            /*char *token = strtok(transactions, " ");
-            int index = 0;
-            while (token != NULL && index < MAX_TRANSACTIONS) {
-                tempCustomer.transactions[index++] = atoi(token);
-                token = strtok(NULL, " ");
-            }*/
-
-            fclose(file);
-            return true;
+        // Parse customer data from each line in the file
+        if (sscanf(line, "%d,%24[^,],%c,%d,%29[^,],%d,%d",
+                   &tempCustomer.id,
+                   tempCustomer.name,
+                   &tempCustomer.gender,
+                   &tempCustomer.age,
+                   tempCustomer.password,
+                   &tempCustomer.account,
+                   &tempCustomer.active) == 7) {
+            // Check if ID and password match
+            if (tempCustomer.id == id && strcmp(tempCustomer.password, password) == 0 && tempCustomer.active == 1) {
+                *ptrToCustomer = tempCustomer; // Copy matched customer data
+                fclose(file);
+                return true; // Authentication successful
+            }
         }
     }
-
     fclose(file);
-    return false;  // No match found
+    return false; // Authentication failed
 }
 
-// Login handler function
-bool login_handler(int connFD, struct Customer* ptrToCustomer) {
+// Function to handle login
+bool login_handler(int connFD, struct Customer *ptrToCustomer) {
     ssize_t readBytes, writeBytes;
     char readBuffer[1000], writeBuffer[1000];
 
     // Prompt for login ID
     bzero(writeBuffer, sizeof(writeBuffer));
-    strcpy(writeBuffer, CUSTOMER_LOGIN_PROMPT_ID);
-    writeBytes = write(connFD, writeBuffer, strlen(writeBuffer));
+    //strcpy(writeBuffer, CUSTOMER_LOGIN_PROMPT_ID);
+    writeBytes = write(connFD,"&Enter the login id \n", strlen("&Enter the login id \n"));
+    printf("sent \n");
     if (writeBytes == -1) {
         perror("Error while writing login ID prompt to client!");
         return false;
@@ -87,12 +81,13 @@ bool login_handler(int connFD, struct Customer* ptrToCustomer) {
         perror("Error while reading login ID from client!");
         return false;
     }
-    int id = atoi(readBuffer);  // Convert login ID to integer
+    int id = atoi(readBuffer); // Convert login ID to integer
+    printf("%s \n",readBuffer);
 
     // Prompt for password
     bzero(writeBuffer, sizeof(writeBuffer));
-    strcpy(writeBuffer, CUSTOMER_LOGIN_PROMPT_PASSWORD);
-    writeBytes = write(connFD, writeBuffer, strlen(writeBuffer));
+    //strcpy(writeBuffer, CUSTOMER_LOGIN_PROMPT_PASSWORD);
+    writeBytes = write(connFD,"&Enter the password\n", strlen("&Enter the password\n"));
     if (writeBytes == -1) {
         perror("Error while writing password prompt to client!");
         return false;
@@ -105,6 +100,7 @@ bool login_handler(int connFD, struct Customer* ptrToCustomer) {
         perror("Error while reading password from client!");
         return false;
     }
+    printf("%s \n",readBuffer);
     char password[1000];
     strcpy(password, readBuffer);
     password[strcspn(password, "\n")] = '\0';  // Remove newline character
@@ -112,8 +108,8 @@ bool login_handler(int connFD, struct Customer* ptrToCustomer) {
     // Authenticate customer by checking the ID and password from the file
     if (authenticate_customer(id, password, ptrToCustomer)) {
         bzero(writeBuffer, sizeof(writeBuffer));
-        strcpy(writeBuffer, CUSTOMER_LOGIN_SUCCESS);
-        writeBytes = write(connFD, writeBuffer, strlen(writeBuffer));
+        //strcpy(writeBuffer, CUSTOMER_LOGIN_SUCCESS);
+        //writeBytes = write(connFD,"*Login success\n", strlen("*Login success\n"));
         if (writeBytes == -1) {
             perror("Error while writing login success message to client!");
             return false;
@@ -121,27 +117,26 @@ bool login_handler(int connFD, struct Customer* ptrToCustomer) {
         return true; // Successful login
     } else {
         bzero(writeBuffer, sizeof(writeBuffer));
-        strcpy(writeBuffer, CUSTOMER_LOGIN_FAILED);
-        writeBytes = write(connFD, writeBuffer, strlen(writeBuffer));
+        //strcpy(writeBuffer, CUSTOMER_LOGIN_FAILED);
+        writeBytes = write(connFD,"*Login failed\n", strlen("*Login failed\n"));
         if (writeBytes == -1) {
             perror("Error while writing login failure message to client!");
         }
-        return false;  // Login failed
+        return false; // Login failed
     }
 }
-
-
 
 
 // Assume a pre-defined Account structure
 
 
+
 bool get_account_details(int connFD, struct Account *customerAccount) {
-    ssize_t readBytes, writeBytes;             // Bytes read from/written to socket
-    char readBuffer[1000], writeBuffer[1000];  // Buffers for socket communication
+    ssize_t readBytes, writeBytes;
+    char readBuffer[1000], writeBuffer[1000];
     int accountNumber;
-    struct Account account;                    // Variable to hold account information
-    int accountFileDescriptor;
+    struct Account account;
+    FILE *file;
 
     // If customerAccount is NULL, ask client for account number
     if (customerAccount == NULL) {
@@ -164,57 +159,57 @@ bool get_account_details(int connFD, struct Account *customerAccount) {
         accountNumber = customerAccount->accountNumber;  // Use provided account number
     }
 
-    // Open the account file to read the account details
-    accountFileDescriptor = open(ACCOUNT_FILE, O_RDONLY);
-    if (accountFileDescriptor == -1) {
+    // Open the account file in read mode
+    file = fopen("acc.txt", "r");
+    if (file == NULL) {
         perror("Error opening account file!");
-        writeBytes = write(connFD, ACCOUNT_ID_DOESNT_EXIT, strlen(ACCOUNT_ID_DOESNT_EXIT));
+        //writeBytes = write(connFD, ACCOUNT_ID_DOESNT_EXIST, strlen(ACCOUNT_ID_DOESNT_EXIST));
         return false;
     }
 
-    // Seek to the location of the account record in the file
-    int offset = lseek(accountFileDescriptor, accountNumber * sizeof(struct Account), SEEK_SET);
-    if (offset == -1) {
-        if (errno == EINVAL) {
-            perror("Invalid account number provided!");
-            writeBytes = write(connFD, ACCOUNT_ID_DOESNT_EXIT, strlen(ACCOUNT_ID_DOESNT_EXIT));
-        } else {
-            perror("Error seeking to the account record!");
+    // Initialize a buffer to store each line
+    char line[256];
+    bool accountFound = false;
+
+    // Read through each line in the file
+    while (fgets(line, sizeof(line), file) != NULL) {
+        struct Account tempAccount;
+        int activeInt;
+
+        // Parse the line using sscanf
+        int parsedFields = sscanf(line, "%d,%d,%d,%ld,%d",
+                                  &tempAccount.accountNumber,
+                                  &tempAccount.customerid,
+                                  &activeInt,
+                                  &tempAccount.balance,
+                                  &tempAccount.transactionCount);
+
+        tempAccount.active = (bool)activeInt;
+
+        // Check if all fields were successfully parsed and if the account number matches
+        if (parsedFields == 5 && tempAccount.accountNumber == accountNumber) {
+            account = tempAccount;
+            accountFound = true;
+            break;
         }
-        close(accountFileDescriptor);
+    }
+
+    // Close the file after reading
+    fclose(file);
+
+    // If account not found, send error message to client
+    if (!accountFound) {
+        //writeBytes = write(connFD, ACCOUNT_ID_DOESNT_EXIST, strlen(ACCOUNT_ID_DOESNT_EXIST));
         return false;
     }
 
-    // Lock the record for reading
-    struct flock lock = {F_RDLCK, SEEK_SET, offset, sizeof(struct Account), getpid()};
-    if (fcntl(accountFileDescriptor, F_SETLKW, &lock) == -1) {
-        perror("Error obtaining read lock on the account record!");
-        close(accountFileDescriptor);
-        return false;
-    }
-
-    // Read the account details from the file
-    readBytes = read(accountFileDescriptor, &account, sizeof(struct Account));
-    if (readBytes == -1) {
-        perror("Error reading account record from file!");
-        lock.l_type = F_UNLCK;  // Unlock before returning
-        fcntl(accountFileDescriptor, F_SETLK, &lock);
-        close(accountFileDescriptor);
-        return false;
-    }
-
-    // Unlock the record after reading
-    lock.l_type = F_UNLCK;
-    fcntl(accountFileDescriptor, F_SETLK, &lock);
-    close(accountFileDescriptor);
-
-    // If customerAccount is not NULL, copy the account details into the structure
+    // Copy account details to the provided customerAccount struct
     if (customerAccount != NULL) {
         *customerAccount = account;
-        return true;
-    }return true;
-}
+    }
 
+    return true;
+}
 bool get_customer_details(int connFD, int customerID) {
     ssize_t readBytes, writeBytes;           // Bytes read from/written to socket
     char writeBuffer[1000];                  // Buffer for socket communication
@@ -289,33 +284,7 @@ bool get_customer_details(int connFD, int customerID) {
 
     return true;
 }
-bool get_transaction_details(int transactionID, struct Transaction *trans)
-{
-    int transactionFileDescriptor = open(TRANSACTION_FILE, O_RDONLY);
-    if (transactionFileDescriptor == -1)
-    {
-        perror("Error opening transaction file!");
-        return false;
-    }
 
-    struct Transaction transaction;
-    
-    // Search for the specific transaction by its ID
-    while (read(transactionFileDescriptor, &transaction, sizeof(struct Transaction)) > 0)
-    {
-        if (transaction.transactionID == transactionID)
-        {
-            // Transaction found, copy details to the provided structure
-            *trans = transaction;
-            close(transactionFileDescriptor);
-            return true; // Success
-        }
-    }
-
-    // If no matching transaction is found
-    close(transactionFileDescriptor);
-    return false; // No transaction with the given ID was found
-}
 bool get_transaction_detail(int connFD, int accountNumber)
 {
     char buffer[1000];
@@ -331,48 +300,67 @@ bool get_transaction_detail(int connFD, int accountNumber)
         {
             // If the account is deactivated, notify the client
             writeBytes = write(connFD, ACCOUNT_DEACTIVATED, strlen(ACCOUNT_DEACTIVATED));
+            memset(buffer,'\0',sizeof(buffer));
             readBytes = read(connFD, buffer, sizeof(buffer)); // Dummy read
             return false;
         }
 
         // Account is active, proceed with fetching transaction details
-        int transactionFileDescriptor = open(TRANSACTION_FILE, O_RDONLY);
-        if (transactionFileDescriptor == -1)
-        {
-            perror("Error opening transaction file!");
-            return false;
-        }
+         FILE *file = fopen("trans.txt", "r");
+    if (!file) {
+        perror("Could not open transaction file");
+        return false;
+    }
 
+    char line[256];
+    bool transactionFound = false;
+
+    // Read each line and parse the transaction details
+    while (fgets(line, sizeof(line), file)) {
         struct Transaction transaction;
-        bool transactionFound = false;
+        struct tm tm;
+        char dateBuffer[30];
 
-        // Clear the buffer
-        bzero(buffer, sizeof(buffer));
+        // Parse transaction data from line
+        if (sscanf(line, "%d,%d,%d,%ld,%ld,%29[^\n]",
+                   &transaction.transactionID,
+                   &transaction.accountNumber,
+                   (int *)&transaction.operation,
+                   &transaction.oldBalance,
+                   &transaction.newBalance,
+                   dateBuffer) == 6) {
 
-        // Search for transactions related to the account
-        while (read(transactionFileDescriptor, &transaction, sizeof(struct Transaction)) > 0)
-        {
-            if (transaction.accountNumber == account.accountNumber)
-            {
+            // // Convert date from string to time_t
+            // if (strptime(dateBuffer, "%Y-%m-%d %H:%M:%S", &tm) != NULL) {
+            //     transaction.transactionTime = mktime(&tm);
+            // } else {
+            //     fprintf(stderr, "Failed to parse date for transaction ID %d\n", transaction.transactionID);
+            //     continue;
+            // }
+
+            // Check if the transaction is for the specified account number
+            if (transaction.accountNumber == accountNumber) {
                 // Transaction found for this account, format the transaction details
                 char transactionDetails[500];
                 sprintf(transactionDetails, "Transaction ID: %d\nOld Balance: ₹ %ld\nNew Balance: ₹ %ld\nOperation: %s\nDate: %s\n\n",
-                        transaction.transactionID, 
-                        transaction.oldBalance, 
-                        transaction.newBalance, 
-                        (transaction.operation == 1 ? "Deposit" : "Withdraw"), 
+                        transaction.transactionID,
+                        transaction.oldBalance,
+                        transaction.newBalance,
+                        (transaction.operation ? "Deposit" : "Withdraw"),
                         ctime(&transaction.transactionTime));
 
                 strcat(buffer, transactionDetails);
                 transactionFound = true;
             }
         }
+    }
 
-        close(transactionFileDescriptor);
-
+    fclose(file);
+    //return transactionFound;
         // Check if any transactions were found
         if (transactionFound)
         {
+            
             writeBytes = write(connFD, buffer, strlen(buffer));
             if (writeBytes == -1)
             {
@@ -390,7 +378,7 @@ bool get_transaction_detail(int connFD, int accountNumber)
                 return false;
             }
         }
-
+        memset(buffer,'\0',sizeof(buffer));
         readBytes = read(connFD, buffer, sizeof(buffer)); // Dummy read
         return true;
     }

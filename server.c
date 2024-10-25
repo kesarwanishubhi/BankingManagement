@@ -9,8 +9,8 @@
 #include "./fun/employee.h"
 #include "./fun/manager.h"
 #include "./fun/administrator1.h"
-
-#define PORT 9096
+#include <time.h>
+#define PORT 9098
 #define BUFFER_SIZE 1024
 
 // Function prototypes
@@ -111,7 +111,7 @@ void *handleClient(void *socket_desc) {
             fflush(stdout);
             fflush(stdin);
             write(client_sock, message, strlen(message));
-            //customer_operation_handler(client_sock);
+            customer_operation_handler(client_sock);
             break;
         case 2:
             //memset(message,'\0',sizeof(message));

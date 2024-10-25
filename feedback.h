@@ -2,6 +2,7 @@
 #define FEEDBACK_RECORD
 
 struct Feedback {
+    int customerID;
     int feedbackID;             // Unique ID for the feedback
     int accountNumber;          // Associated account number
     char feedbackText[500];     // Feedback message (adjust size as needed)

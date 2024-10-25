@@ -10,8 +10,8 @@ struct Loan {
     int customerID;                //customer id
     int isAssigned;                // 1 for assigned 0 for not assigned
     char loanPurpose[LOAN_PURPOSE_MAX_LEN]; // Purpose of the loan
-    char status[15];                   // status of loan
-    time_t applicationDate;        // Date and time of loan application
+    //char status[15];                   // status of loan
+    //time_t applicationDate;        // Date and time of loan application
 };
 
 
