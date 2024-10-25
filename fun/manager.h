@@ -127,8 +127,9 @@ void managerLogin(int connFD) {
         if (checkManagerCredentials(loginID, password)) {
             
             //write(connFD,MANAGER_LOGIN_SUCCESS, strlen(MANAGER_LOGIN_SUCCESS));
+            bool logged_in=true;
 
-            while (1) {
+            while (logged_in) {
                 // Send manager menu options to the client
                 fflush(stdout);
                 //strcat(buffer, MANAGER_MENU);
@@ -156,11 +157,12 @@ void managerLogin(int connFD) {
                         break;
                     case 6: // Logout
                         //logout(connFD);
+                        logged_in=false;
                         break; // Exit the manager session
                     default:
                         // strcpy(buffer, "*");
-                        // strcat(buffer, MANAGER_LOGOUT);
-                        // write(connFD, buffer, strlen(buffer));
+                        // strcat(buffer, MANAGER_LOGOUT)
+                         write(connFD,"*Invalid choice\n", strlen("*Invalid choice\n"));
                         return;
                 }
             }
@@ -513,8 +515,8 @@ void assignLoanApplication(int connFD) {
         
         if (loan.loanID == loanID) {
             // Loan matches the one to assign
-            fprintf(assignedFile, "%d,%d,%ld,%d,%d,%s\n", loan.loanID, loan.accountNumber, 
-                    loan.loanAmount, loan.customerID, employeeID, loan.loanPurpose);
+            fprintf(assignedFile, "%d,%d,%ld,%d,%d,%s%d\n", loan.loanID, loan.accountNumber, 
+                    loan.loanAmount, loan.customerID, employeeID, loan.loanPurpose,-1);
             found = 1; // Mark that we found and assigned this loan
         } else {
             // Keep the loan in requests

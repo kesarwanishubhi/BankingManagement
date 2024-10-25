@@ -15,8 +15,9 @@
 #include "../loan.h"
 #include "../feedback.h"
 #include "../employee.h"
+#include "../Assignedloan.h"
 #include "../fun/constants.h"
-
+#define BUFFER_SIZE 1024
 
 // Function Prototypes
 bool add_new_customer(int connFD);
@@ -24,8 +25,8 @@ bool empl_handler(int connFD);
 bool change_p(int connFD);
 bool modify_customer_details(int connFD);
 //bool process_loan_application(int connFD);
-bool approve_reject_loan(int connFD);
-bool view_assigned_loan_applications(int connFD);
+void approve_reject_loan(int connFD);
+void view_assigned_loan_applications(int connFD);
 int get_next_customer_id();
 
 bool empl_handler(int connFD)
@@ -61,56 +62,39 @@ bool empl_handler(int connFD)
     password[strcspn(password, "\n")] = '\0'; // Remove newline character if any
     printf("Received Password: %s\n", password);  // Debugging line
 
-   int fileFD = open("employee.txt", O_RDONLY);
-    if (fileFD < 0) {
-        const char *errorMessage = "*Error opening employee details file.\n";
-        write(connFD, errorMessage, strlen(errorMessage));
-        return false;
+   FILE *file = fopen("employee.txt", "r");
+    if (!file) {
+        perror("Error opening file");
+        return 0;
     }
-    printf("I walked here\n");
-    char line[500];  // Buffer to hold each line from the file
-    char employeeDetails[256];    // Buffer to store formatted employee details
-    int found = 0;                // Flag to check if employee is found
 
-    // Read each line from the file
-    while (read(fileFD, line, sizeof(line)) > 0) {
-        printf("I came here too\n");
-        struct Employee employee;  // Declare an employee structure
-        char *token;line[strcspn(line, "\n")] = 0;
+    struct Employee employee;
+    //char buffer[BUFFER_SIZE];
+    int found = 0;
 
-        // Parse the line using strtok to separate the fields
-        token = strtok(line, ",");
-        if (token != NULL) {
-            strncpy(employee.name, token, sizeof(employee.name));
-            employee.name[sizeof(employee.name) - 1] = '\0'; // Null-terminate
+    // Read each line in employee.txt and parse it
+    while (fgets(buffer, BUFFER_SIZE, file)) {
+        // Parse the line based on the CSV structure: name,id,type,password
+        sscanf(buffer, "%49[^,],%d,%d,%49[^,]",
+               employee.name, &employee.id, &employee.type, employee.password);
 
-            token = strtok(NULL, ","); // Get ID
-            if (token != NULL) {
-                employee.id = atoi(token); // Convert string to integer
-            }
-
-            token = strtok(NULL, ","); // Get Type
-            if (token != NULL) {
-                employee.type = atoi(token); // Convert string to integer
-            }
-
-            token = strtok(NULL, ","); // Get Password
-            if (token != NULL) {
-                strncpy(employee.password, token, sizeof(employee.password));
-                employee.password[sizeof(employee.password) - 1] = '\0'; // Null-terminate
-            }
-
-            // Check if the employee ID matches the search ID
-            printf("I gone there\n");
-            if (employee.id == id) {
-                //write(connFD,"*Login Successful! \n",strlen("*Login Successful \n"));
-                fflush(stdout);
-                fflush(stdin);
-                logged_in = true;
-                break;
-            }
+        // Check if both ID and password match
+        if (employee.id == id ) {
+            found = 1;
+            logged_in=true;
+            break;
         }
     }
+
+    fclose(file);
+
+    if (!found) {
+        write(connFD,"*Invalid credentials \n",sizeof("*Invalid credentials \n"));
+        return false;
+    }
+    
+    
+
 
 
     //write(connFD, "*Login Successful!\n", strlen("*Login Successful!\n"));
@@ -155,13 +139,13 @@ bool empl_handler(int connFD)
                 modify_customer_details(connFD);
                 break;
             case 3:
-                write(connFD, "*Approve/Reject Loans selected.\n", strlen("*Approve/Reject Loans selected.\n"));
-                //approve_reject_loan(connFD);
-                printf("MEssage sent \n");
+                //write(connFD, "*Approve/Reject Loans selected.\n", strlen("*Approve/Reject Loans selected.\n"));
+                approve_reject_loan(connFD);
+                //printf("MEssage sent \n");
                 break;
             case 4:
-                write(connFD, "*View Assigned Loan Applications selected.\n", strlen("*View Assigned Loan Applications selected.\n"));
-                //view_assigned_loan_applications(connFD);
+                //write(connFD, "*View Assigned Loan Applications selected.\n", strlen("*View Assigned Loan Applications selected.\n"));
+                view_assigned_loan_applications(connFD);
                 break;
             case 5:
                 change_p(connFD);
@@ -169,10 +153,10 @@ bool empl_handler(int connFD)
             case 6:
                 write(connFD, "*Logging out...\n", strlen("*Logging out...\n"));
                 logged_in = false;
-                printf("MEssage sent");
+                //printf("MEssage sent");
                 break;
             case 7:
-                write(connFD, "Exiting...\n", strlen("Exiting...\n"));
+                write(connFD, "*Exiting...\n", strlen("*Exiting...\n"));
                 logged_in = false;
                 break;
             default:
@@ -491,145 +475,134 @@ bool change_p(int connFD) {
 
     return true;
 }
-/*bool process_loan_application(int connFD) {
-    // Similar structure to add_new_customer but for loan applications
-    struct Loan newLoanApplication;
-    char buffer[1000];
-    ssize_t writeBytes;
-
-    // Prompt for loan application details
-    write(connFD, "Enter Customer ID for Loan Application: ", 40);
-    read(connFD, buffer, sizeof(buffer));
-    newLoanApplication.customerID = atoi(buffer);
-
-    write(connFD, "Enter Loan Amount: ", 19);
-    read(connFD, buffer, sizeof(buffer));
-    newLoanApplication.amount = atoi(buffer);
-
-    write(connFD, "Enter Loan Purpose: ", 20);
-    read(connFD, newLoanApplication.purpose, sizeof(newLoanApplication.purpose));
-
-    // Write new loan application to file
-    int loanFileFD = open(LOAN_APPLICATION_FILE, O_WRONLY | O_APPEND);
-    if (loanFileFD == -1) {
-        perror("Error opening loan application file for writing!");
-        return false;
+void view_assigned_loan_applications(int connFD) {
+    FILE *file = fopen("assloan.txt", "r");
+    if (!file) {
+        perror("Error opening file");
+        return;
     }
 
-    if (write(loanFileFD, &newLoanApplication, sizeof(struct LoanApplication)) == -1) {
-        perror("Error writing new loan application to file!");
-        close(loanFileFD);
-        return false;
+    struct AssignedLoan loan;
+    char buffer[BUFFER_SIZE];
+    int employeeID;
+
+    // Request employee ID from the client
+    strcpy(buffer, "&Enter employee ID to view assigned loans:\n");
+    send(connFD, buffer, strlen(buffer), 0);
+
+    // Receive the employee ID from the client
+    memset(buffer,'\0',sizeof(buffer));
+    recv(connFD, buffer, BUFFER_SIZE, 0);
+    employeeID = atoi(buffer);  // Convert received string to integer
+
+    //printf("Received employee ID from client: %d\n", employeeID);
+    
+    // Prepare the message to send to the client
+    memset(buffer,'\0',sizeof(buffer));
+    snprintf(buffer, BUFFER_SIZE, "*Loans assigned to employee ID %d:\n", employeeID);
+    send(connFD, buffer, strlen(buffer), 0);
+
+    // Read and process each loan entry in the file
+    while (fgets(buffer, BUFFER_SIZE, file)) {
+        // Parse the line based on the format in assloan.txt
+        sscanf(buffer, "%d,%d,%ld,%d,%d,%49[^,],%d",
+               &loan.loanID, &loan.accountNumber, &loan.loanAmount,
+               &loan.customerID, &loan.employeeID, loan.loanPurpose, &loan.status);
+
+        // Check if the loan is assigned to the specified employee ID
+        if (loan.employeeID == employeeID) {
+            // Format loan details to send to the client
+            snprintf(buffer, BUFFER_SIZE,
+                     "*Loan ID: %d\nAccount Number: %d\nLoan Amount: %ld\nCustomer ID: %d\nPurpose: %s\nStatus: %d\n\n",
+                     loan.loanID, loan.accountNumber, loan.loanAmount, loan.customerID, loan.loanPurpose, loan.status);
+            send(connFD, buffer, strlen(buffer), 0);
+        }
     }
 
-    close(loanFileFD);
-    write(connFD, LOAN_APPLICATION_RECEIVED, strlen(LOAN_APPLICATION_RECEIVED));
-    return true;
-}*/
+    // Notify client of end of data transmission
+    strcpy(buffer, "*End of loan applications.\n");
+    send(connFD, buffer, strlen(buffer), 0);
+
+    fclose(file);
+}
+void approve_reject_loan(int connFD) {
+    FILE *file = fopen("assloan.txt", "r+");  // Open file for both reading and updating
+    if (!file) {
+        perror("Error opening file");
+        return;
+    }
+
+    int employeeID;
+    char buffer[BUFFER_SIZE];
+
+    // Request the employee ID from the client
+    strcpy(buffer, "&Enter your Employee ID:\n");
+    send(connFD, buffer, strlen(buffer), 0);
+
+    // Receive the employee ID from the client
+    memset(buffer,'\0',sizeof(buffer));
+    recv(connFD, buffer, BUFFER_SIZE, 0);
+    employeeID = atoi(buffer);
+
+    // Prepare to find and display loans for the given employeeID
+    struct AssignedLoan loan;
+    int found = 0;
+    long int pos;
+
+    while (fgets(buffer, BUFFER_SIZE, file)) {
+        // Store the current file position for later use
+        pos = ftell(file) - strlen(buffer);
+
+        // Parse loan details from the file
+        sscanf(buffer, "%d,%d,%ld,%d,%d,%49[^,],%d",
+               &loan.loanID, &loan.accountNumber, &loan.loanAmount,
+               &loan.customerID, &loan.employeeID, loan.loanPurpose, &loan.status);
+
+        // Check if the loan is assigned to the employee and is pending (status == -1)
+        if (loan.employeeID == employeeID && loan.status == -1) {
+            found = 1;
+            // Send loan details to the client
+            snprintf(buffer, BUFFER_SIZE,
+                     "Loan ID: %d\nAccount Number: %d\nLoan Amount: %ld\nCustomer ID: %d\nPurpose: %s\nStatus: Pending\n",
+                     loan.loanID, loan.accountNumber, loan.loanAmount, loan.customerID, loan.loanPurpose);
+            send(connFD, buffer, strlen(buffer), 0);
+
+            // Ask for approval or rejection from the client
+            strcpy(buffer, "Do you want to approve (1) or reject (0) this loan? Enter 1 or 0:\n");
+            send(connFD, buffer, strlen(buffer), 0);
+            memset(buffer,'\0',sizeof(buffer));
+            recv(connFD, buffer, BUFFER_SIZE, 0);
+
+            // Update the loan status based on client's response
+            int decision = atoi(buffer);
+            loan.status = (decision == 1) ? 1 : 0;
+
+            // Seek to the beginning of the current line to overwrite it
+            fseek(file, pos, SEEK_SET);
+            fprintf(file, "%d,%d,%ld,%d,%d,%s,%d\n", 
+                    loan.loanID, loan.accountNumber, loan.loanAmount, 
+                    loan.customerID, loan.employeeID, loan.loanPurpose, loan.status);
+
+            // Flush to ensure data is written
+            fflush(file);
+
+            // Inform client of the updated status
+            snprintf(buffer, BUFFER_SIZE, "Loan ID %d has been %s.\n", loan.loanID, (loan.status == 1) ? "approved" : "rejected");
+            send(connFD, buffer, strlen(buffer), 0);
+        }
+    }
+
+    if (!found) {
+        memset(buffer,'\0',sizeof(buffer));
+        strcpy(buffer, "*No pending loans found for your employee ID.\n");
+        send(connFD, buffer, strlen(buffer), 0);
+    }
+
+    fclose(file);
+}
 
 
-// bool approve_reject_loan(int connFD) {
-//     struct Loan loan;
-//     int loanID;
-//     char decision[10];
-//     ssize_t writeBytes;
-//     int loanFileFD;
-//     bool found = false;
 
-//     // Request the loan ID from the client
-//     writeBytes = write(connFD, "Enter Loan Application ID to approve/reject: ", 44);
-//     read(connFD, decision, sizeof(decision));
-//     loanID = atoi(decision);
-
-//     // Open the loan file to read and update
-//     loanFileFD = open(LOAN_FILE, O_RDWR);
-//     if (loanFileFD == -1) {
-//         perror("Error opening loan file!");
-//         return false;
-//     }
-
-//     // Search for the loan record with the given loan ID
-//     while (read(loanFileFD, &loan, sizeof(struct Loan)) > 0) {
-//         if (loan.loanID == loanID) {
-//             found = true;
-//             break;
-//         }
-//     }
-
-//     if (!found) {
-//         // Loan ID not found
-//         write(connFD, "Loan ID not found.\n", strlen("Loan ID not found.\n"));
-//         close(loanFileFD);
-//         return false;
-//     }
-
-//     // Get the employee's decision (approve/reject)
-//     writeBytes = write(connFD, "Enter employee decision (approve/reject): ", 42);
-//     read(connFD, decision, sizeof(decision));
-
-//     // Update the loan status based on the decision
-//     if (strcmp(decision, "approve") == 0) {
-//         strcpy(loan.status, "approved");
-//         write(connFD, LOAN_APPROVED, strlen(LOAN_APPROVED));
-//     } else if (strcmp(decision, "reject") == 0) {
-//         strcpy(loan.status, "rejected");
-//         write(connFD, LOAN_REJECTED, strlen(LOAN_REJECTED));
-//     } else {
-//         // Invalid decision
-//         write(connFD, "Invalid decision entered. Please try again.\n", 45);
-//         close(loanFileFD);
-//         return false;
-//     }
-
-//     // Move the file pointer back to the location of the loan record to overwrite it
-//     lseek(loanFileFD, -sizeof(struct Loan), SEEK_CUR);
-
-//     // Write the updated loan record back to the file
-//     if (write(loanFileFD, &loan, sizeof(struct Loan)) == -1) {
-//         perror("Error writing updated loan record!");
-//         close(loanFileFD);
-//         return false;
-//     }
-
-//     // Close the file
-//     close(loanFileFD);
-
-//     return true;
-// }
-
-
-// bool view_assigned_loan_applications(int connFD) {
-//     // Read and display assigned loan applications from the loan application file
-//     int loanFileFD = open(LOAN_FILE, O_RDONLY);
-//     if (loanFileFD == -1) {
-//         perror("Error opening loan application file for reading!");
-//         return false;
-//     }
-
-//     struct Loan loanApplication;
-//     char writeBuffer[10000] = {0};
-//     ssize_t readBytes;
-
-//     // Iterate through the loan applications
-//     while ((readBytes = read(loanFileFD, &loanApplication, sizeof(struct Loan))) > 0) {
-//         // Append loan application details to writeBuffer
-//         char tempBuffer[1000];
-       
-//         sprintf(tempBuffer, "Loan Application ID: %d, Customer ID: %d, Amount: %ld, Purpose: %s\nStatus: %s\n",
-//                 loanApplication.loanID, loanApplication.customerID, loanApplication.loanAmount, loanApplication.loanPurpose, loanApplication.status);
-//         strcat(writeBuffer, tempBuffer);
-//     }
-
-//     if (strlen(writeBuffer) == 0) {
-//         write(connFD, NO_LOAN_APPLICATIONS, strlen(NO_LOAN_APPLICATIONS));
-//     } else {
-//         write(connFD, VIEW_LOAN_APPLICATIONS, strlen(VIEW_LOAN_APPLICATIONS));
-//         write(connFD, writeBuffer, strlen(writeBuffer));
-//     }
-
-//     close(loanFileFD);
-//     return true;
-// }
 int get_next_customer_id(int connFD) {
     int max_id = 0;
     struct Customer c;
