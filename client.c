@@ -12,7 +12,7 @@
 
 
 
-#define PORT 9097
+#define PORT 9098
 #define BUFFER_SIZE 1024
 //void connection_handler(int sockFD);
 
@@ -58,9 +58,47 @@ int main() {
     printf("Enter the choice: ");
     fgets(choice, sizeof(choice), stdin);
     choice[strcspn(choice, "\n")] = '\0'; // Remove newline character
+    write(sock, choice, strlen(choice));
+
+    //username
+    fflush(stdout);
+        fflush(stdin);
+    bzero(readbuf, sizeof(readbuf));
+    bzero(writebuf, sizeof(writebuf));
+    readBytes=read(sock,readbuf,sizeof(readbuf));
+    if(readBytes==-1){
+        printf("Error \n");
+    }
+    printf("%s",readbuf);
+    scanf("%s",writebuf);
+    writeBytes=write(sock,writebuf,sizeof(writebuf));
+
+    //password
+    fflush(stdout);
+        fflush(stdin);
+    bzero(readbuf, sizeof(readbuf));
+    bzero(writebuf, sizeof(writebuf));
+    readBytes=read(sock,readbuf,sizeof(readbuf));
+    if(readBytes==-1){
+        printf("Error \n");
+    }
+    printf("%s",readbuf);
+    scanf("%s",writebuf);
+    writeBytes=write(sock,writebuf,sizeof(writebuf));
+
+    //prompt
+    fflush(stdout);
+        fflush(stdin);
+    bzero(readbuf, sizeof(readbuf));
+    bzero(writebuf, sizeof(writebuf));
+    readBytes=read(sock,readbuf,sizeof(readbuf));
+    if(readBytes==-1){
+        printf("Error \n");
+    }
+    printf("%s",readbuf);
 
     // Send user role choice to server
-    write(sock, choice, strlen(choice));
+    
     do{
         // printf("menu");
         fflush(stdout);

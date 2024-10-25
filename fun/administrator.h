@@ -37,17 +37,25 @@ void adminLogin(int connFD) {
     char password[100];
 
     // Send welcome message to admin
-    write(connFD, ADMIN_LOGIN_WELCOME, strlen(ADMIN_LOGIN_WELCOME));
+    //write(connFD, ADMIN_LOGIN_WELCOME, strlen(ADMIN_LOGIN_WELCOME));
 
     // Get login ID from client
+    fflush(stdout);
+        fflush(stdin);
     write(connFD, LOGIN_ID, strlen(LOGIN_ID));
     bzero(loginID, sizeof(loginID));
     read(connFD, loginID, sizeof(loginID));
+    //loginID[strcspn(loginID, "\n")] = '\0';
+    printf("Username received : %s \n", loginID);
 
     // Get password from client
+    fflush(stdout);
+        fflush(stdin);
     write(connFD, PASSWORD, strlen(PASSWORD));
     bzero(password, sizeof(password));
     read(connFD, password, sizeof(password));
+    //password[strcspn(password, "\n")] = '\0'; // Remove newline character if any
+     printf("Password received : %s \n", password);
 
 
     if (strcmp(loginID, ADMIN_LOGIN_ID) == 0 && strcmp(password, ADMIN_PASSWORD) == 0) {
@@ -70,7 +78,8 @@ void adminLogin(int connFD) {
                 default: adminLogout(connFD); return;
             }
         }
-    } else {
+    } 
+    else {
         write(connFD, INVALID_LOGIN, strlen(INVALID_LOGIN));
     }
 }
@@ -479,7 +488,7 @@ void manageUserRoles(int connFD) {
 }
 
 void adminLogout(int connFD) {
-    
+
 }
 
 #endif

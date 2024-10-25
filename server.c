@@ -8,9 +8,9 @@
 #include "./fun/customer.h"
 #include "./fun/employee.h"
 #include "./fun/manager.h"
-#include "./fun/administrator.h"
+#include "./fun/administrator1.h"
 
-#define PORT 9097
+#define PORT 9096
 #define BUFFER_SIZE 1024
 
 // Function prototypes
@@ -85,38 +85,55 @@ int main() {
 void *handleClient(void *socket_desc) {
     int client_sock = *(int *)socket_desc;
     char buffer[BUFFER_SIZE];
+    char message[BUFFER_SIZE];
     int choice;
 
     // Read the user's choice from the client
     bzero(buffer,sizeof(buffer));
     read(client_sock, buffer, BUFFER_SIZE);
-    printf("Received role choice: %s\n", buffer); // Debugging line
-    choice = atoi(buffer);  // Convert the string choice to an integer
+    printf("Received from client: %s\n", buffer); // Debugging line
+    //choice = atoi(buffer);  // Convert the string choice to an integer
+    send(client_sock,"hello from server \n",strlen("hello from server \n"),0);
+    printf("Hello \n");
+    fflush(stdout);
+    fflush(stdin);
+    memset(buffer,'\0',sizeof(buffer)); 
+    recv(client_sock,buffer,BUFFER_SIZE,0);
+    printf("I reached here \n");
+    printf("%s",buffer);
+    choice = atoi(buffer);
 
-    // Handle the user's role based on the choice using switch-case
+    //Handle the user's role based on the choice using switch-case
     switch (choice) {
         case 1:
-            //char message[] = "Customer Menu: \n1. View Account Balance\n2. Deposit Money\n3. Withdraw Money\n4. Transfer Funds\n5. Apply for a Loan\n Enter the choice\n";
-            //write(client_sock, message, strlen(message));
-            customer_operation_handler(client_sock);
+            memset(message,'\0',sizeof(message));
+            strcpy(message,"Customer menu");
+            fflush(stdout);
+            fflush(stdin);
+            write(client_sock, message, strlen(message));
+            //customer_operation_handler(client_sock);
             break;
         case 2:
-            //char message[] = "Bank Employee Menu: \n1. Add New Customer\n2. Modify Customer Details\n3. Process Loan Applications\n4. View Customer Transactions\n Enter the choice\n";
-            //write(client_sock, message, strlen(message));
-            //printf("Hello \n");
+            //memset(message,'\0',sizeof(message));
+            //strcpy(message,"employee menu");
+            fflush(stdout);
+            fflush(stdin);
+            //write(client_sock, message, strlen(message));;
             empl_handler(client_sock);
             
             break;
         case 3:
-            //char message[] = "Manager Menu: \n1. Activate/Deactivate Customer Accounts\n2. Assign Loan Applications\n3. Review Customer Feedback\n Enter the choice\n";
-            //write(client_sock, message, strlen(message));
+            
+            
+            fflush(stdout);
+            fflush(stdin);
             managerLogin(client_sock);
-            //printf("Hello");
             break;
         case 4:
-            //char message[] = "Administrator Menu: \n1. Add New Bank Employee\n2. Modify Customer/Employee Details\n3. Manage User Roles\n Enter the choice\n";
-            //write(client_sock, message, strlen(message));
-            //handleAdministrator(client_sock);
+            memset(message,'\0',sizeof(message));
+            //strcpy(message,"administrator1 menu");
+            fflush(stdout);
+            fflush(stdin);
             adminLogin(client_sock);
             //printf("Hello");
             break;

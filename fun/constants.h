@@ -7,9 +7,9 @@
 // ========== COMMON TEXT =============================
 
 // LOGIN
-#define LOGIN_ID "&Enter your login ID"
-#define PASSWORD "&Enter your password \n# "
-#define INVALID_LOGIN "*The login ID specified doesn't exist!$"
+#define LOGIN_ID "&Enter your login ID:\n"
+#define PASSWORD "&Enter your password:\n"
+#define INVALID_LOGIN "*The login ID specified doesn't exist!$\n"
 #define INVALID_PASSWORD "*The password specified doesn't match!$"
 #define SALT_BAE "666"
 
@@ -34,10 +34,10 @@
 
 // LOGIN WELCOME
 #define ADMIN_LOGIN_WELCOME "*Welcome dear admin! With great power comes great responsibility!\nEnter your credentials to unlock this power!"
-#define ADMIN_LOGIN_SUCCESS "*Welcome superman!"
+#define ADMIN_LOGIN_SUCCESS "sucess\n"
 
 // ADMIN MENU
-#define ADMIN_MENU "*1. Get Customer Details\n2. Get Account Details\n3. Get Transaction details\n4. Add Account\n5. Delete Account\n6. Modify Customer Information\nPress any other key to logout"
+#define ADMIN_MENU "&Welcome superman!\n1.Add new employee\n2. Modify employee details\n3.Get employee details\n4.Manage user roles \n Enter your choice : \n"
 
 // ADD CUSTOMER
 #define ADMIN_ADD_CUSTOMER_PRIMARY "&Enter the details for the primary customer\n"
@@ -156,11 +156,11 @@
 // ========== MANAGER SPECIFIC TEXT ====================
 
 // MANAGER LOGIN WELCOME
-#define MANAGER_LOGIN_WELCOME "*Welcome dear manager! Enter your credentials to access the management panel!"
+//#define MANAGER_LOGIN_WELCOME "*Welcome dear manager! Enter your credentials to access the management panel!"
 #define MANAGER_LOGIN_SUCCESS "*Welcome manager!"
 
 // MANAGER MENU
-#define MANAGER_MENU "*1. Activate Customer Account\n2. Assign Loan Applications\n3. Review Customer Feedback\n4. Change Password\n5. Deactivate Customer Account\n6. Logout\n"
+#define MANAGER_MENU "&Welcome manager! \n1. Activate Customer Account\n2. Assign Loan Applications\n3. Review Customer Feedback\n4. Change Password\n5. Deactivate Customer Account\n6. Logout\nEnetr the choice\n"
 
 // ACTIVATE/DEACTIVATE CUSTOMER ACCOUNT
 #define MANAGER_ACTIVATE_ACCOUNT_PROMPT "&Enter the account number of the customer to activate:"
